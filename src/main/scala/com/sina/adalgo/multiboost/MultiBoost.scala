@@ -19,14 +19,14 @@ package com.sina.adalgo.multiboost
 
 import java.io._
 import scopt.OptionParser
-import org.apache.spark.mllib.classification.multilabel.stronglearners.AdaBoostMHAlgorithm
-import org.apache.spark.mllib.classification.multilabel.stronglearners.AdaBoostMHModel
-import org.apache.spark.mllib.classification.multilabel.baselearners.DecisionStumpAlgorithm
-import org.apache.spark.mllib.classification.multilabel.baselearners.DecisionStumpModel
+import com.sina.adalgo.multiboost.stronglearners.AdaBoostMHAlgorithm
+import com.sina.adalgo.multiboost.stronglearners.AdaBoostMHModel
+import com.sina.adalgo.multiboost.baselearners.DecisionStumpAlgorithm
+import com.sina.adalgo.multiboost.baselearners.DecisionStumpModel
 import org.apache.spark.{SparkContext, SparkConf}
 import org.apache.spark.rdd.RDD
-import org.apache.spark.mllib.classification.multilabel.MultiLabeledPoint
-import org.apache.spark.mllib.classification.multilabel.MultiLabeledPointParser
+import com.sina.adalgo.multiboost.MultiLabeledPoint
+import com.sina.adalgo.multiboost.MultiLabeledPointParser
 
 object MultiBoost {
 

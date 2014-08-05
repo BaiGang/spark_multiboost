@@ -19,7 +19,7 @@ package com.sina.adalgo.multiboost.baselearners
 
 import org.apache.spark.mllib.linalg.{Vector, Vectors}
 import org.apache.spark.rdd.RDD
-import org.apache.spark.mllib.classification.multilabel.WeightedMultiLabeledPoint
+import com.sina.adalgo.multiboost.WeightedMultiLabeledPoint
 
 /**
  * The Hamming tree model.

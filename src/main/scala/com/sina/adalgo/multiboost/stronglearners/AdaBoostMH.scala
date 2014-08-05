@@ -19,11 +19,11 @@ package com.sina.adalgo.multiboost.stronglearners
 
 import scala.language.higherKinds
 import org.apache.spark.SparkContext._
-import org.apache.spark.mllib.classification.multilabel.{MultiLabelClassificationAlgorithm, MultiLabelClassificationModel, MultiLabeledPoint, WeightedMultiLabeledPoint}
+import com.sina.adalgo.multiboost.{MultiLabelClassificationAlgorithm, MultiLabelClassificationModel, MultiLabeledPoint, WeightedMultiLabeledPoint}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.mllib.linalg.{Vectors, Vector}
 import org.apache.spark.annotation.Experimental
-import org.apache.spark.mllib.classification.multilabel.baselearners.{DecisionStumpAlgorithm, DecisionStumpModel, BaseLearnerModel, BaseLearnerAlgorithm}
+import com.sina.adalgo.multiboost.baselearners.{DecisionStumpAlgorithm, DecisionStumpModel, BaseLearnerModel, BaseLearnerAlgorithm}
 
 /**
  *

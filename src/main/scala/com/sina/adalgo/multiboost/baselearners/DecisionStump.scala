@@ -17,7 +17,7 @@
 
 package com.sina.adalgo.multiboost.baselearners
 
-import org.apache.spark.mllib.classification.multilabel.{WeightedMultiLabeledPoint, MultiLabeledPoint}
+import com.sina.adalgo.multiboost.{WeightedMultiLabeledPoint, MultiLabeledPoint}
 import org.apache.spark.mllib.linalg.{Vectors, Vector}
 import org.apache.spark.annotation.Experimental
 import org.apache.spark.rdd.RDD
