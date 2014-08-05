@@ -15,23 +15,20 @@
  * limitations under the License.
  */
 
-package com.sina.adalgo.multiboost.stronglearners
+package org.apache.spark.mllib.classification.multilabel.stronglearners
 
 import org.apache.spark.annotation.Experimental
-import com.sina.adalgo.multiboost.{MultiLabeledPoint, MultiLabelClassificationAlgorithm, MultiLabelClassificationModel}
+import org.apache.spark.mllib.classification.multilabel.{ MultiLabeledPoint, MultiLabelClassificationAlgorithm, MultiLabelClassificationModel }
 import org.apache.spark.rdd.RDD
 
 @Experimental
 abstract class StrongLearnerModel[B <: MultiLabelClassificationModel]
-  extends MultiLabelClassificationModel {
+    extends MultiLabelClassificationModel {
   def baseLearners: List[B]
 }
 
 @Experimental
-abstract class StrongLearnerAlgorithm[
-    BM <: MultiLabelClassificationModel,
-    BA <: MultiLabelClassificationAlgorithm[BM],
-    SM <: StrongLearnerModel[BM]]
-  extends MultiLabelClassificationAlgorithm[SM] {
+abstract class StrongLearnerAlgorithm[BM <: MultiLabelClassificationModel, BA <: MultiLabelClassificationAlgorithm[BM], SM <: StrongLearnerModel[BM]]
+    extends MultiLabelClassificationAlgorithm[SM] {
   def run(dataSet: RDD[MultiLabeledPoint]): SM
 }

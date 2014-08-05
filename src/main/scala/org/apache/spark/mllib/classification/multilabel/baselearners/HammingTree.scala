@@ -15,18 +15,18 @@
  * limitations under the License.
  */
 
-package com.sina.adalgo.multiboost.baselearners
+package org.apache.spark.mllib.classification.multilabel.baselearners
 
-import org.apache.spark.mllib.linalg.{Vector, Vectors}
+import org.apache.spark.mllib.linalg.{ Vector, Vectors }
 import org.apache.spark.rdd.RDD
-import com.sina.adalgo.multiboost.WeightedMultiLabeledPoint
+import org.apache.spark.mllib.classification.multilabel.WeightedMultiLabeledPoint
 
 /**
  * The Hamming tree model.
  * A basic tree learner adapted to the multi-class setup of AdaBoost.MH.
  */
 class HammingTreeModel
-  extends BaseLearnerModel {
+    extends BaseLearnerModel {
 
   /**
    * Given the feature vector, predict the labels.
@@ -36,7 +36,7 @@ class HammingTreeModel
    */
   override def predict(features: Vector): Vector = {
     // TODO: predictions
-    Vectors.dense(1.0, 2,0)
+    Vectors.dense(1.0, 2, 0)
   }
 
   /**
@@ -57,10 +57,10 @@ class HammingTreeModel
  * @param numNodes Num of nodes in a tree.
  */
 class HammingTreeAlgorithm(
-    _numClasses: Int,
-    _numFeatureDimensions: Int,
-    _numNodes: Int)
-  extends BaseLearnerAlgorithm[HammingTreeModel] {
+  _numClasses: Int,
+  _numFeatureDimensions: Int,
+  _numNodes: Int)
+    extends BaseLearnerAlgorithm[HammingTreeModel] {
 
   override def numClasses = _numClasses
   override def numFeatureDimensions = _numFeatureDimensions

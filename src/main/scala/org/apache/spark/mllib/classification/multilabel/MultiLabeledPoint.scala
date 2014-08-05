@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package com.sina.adalgo.multiboost
+package org.apache.spark.mllib.classification.multilabel
 
 import org.apache.spark.mllib.linalg.{Vectors, Vector}
 import org.apache.spark.mllib.util.NumericParser
@@ -70,10 +70,10 @@ object MultiLabeledPointParser {
     NumericParser.parse(s) match {
       case Seq(weights: Any, Seq(labels: Any, features: Any)) =>
         WeightedMultiLabeledPoint(
-            Vectors.parseNumeric(weights),
-            MultiLabeledPoint(
-                Vectors.parseNumeric(labels),
-                Vectors.parseNumeric(features)))
+          Vectors.parseNumeric(weights),
+          MultiLabeledPoint(
+            Vectors.parseNumeric(labels),
+            Vectors.parseNumeric(features)))
       case other =>
         throw new SparkException(s"Cannot parse $other")
     }

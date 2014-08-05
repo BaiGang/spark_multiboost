@@ -15,18 +15,18 @@
  * limitations under the License.
  */
 
-package com.sina.adalgo.multiboost
+package org.apache.spark.examples.mllib
 
 import java.io._
 import scopt.OptionParser
-import com.sina.adalgo.multiboost.stronglearners.AdaBoostMHAlgorithm
-import com.sina.adalgo.multiboost.stronglearners.AdaBoostMHModel
-import com.sina.adalgo.multiboost.baselearners.DecisionStumpAlgorithm
-import com.sina.adalgo.multiboost.baselearners.DecisionStumpModel
-import org.apache.spark.{SparkContext, SparkConf}
+import org.apache.spark.mllib.classification.multilabel.stronglearners.AdaBoostMHAlgorithm
+import org.apache.spark.mllib.classification.multilabel.stronglearners.AdaBoostMHModel
+import org.apache.spark.mllib.classification.multilabel.baselearners.DecisionStumpAlgorithm
+import org.apache.spark.mllib.classification.multilabel.baselearners.DecisionStumpModel
+import org.apache.spark.{ SparkContext, SparkConf }
 import org.apache.spark.rdd.RDD
-import com.sina.adalgo.multiboost.MultiLabeledPoint
-import com.sina.adalgo.multiboost.MultiLabeledPointParser
+import org.apache.spark.mllib.classification.multilabel.MultiLabeledPoint
+import org.apache.spark.mllib.classification.multilabel.MultiLabeledPointParser
 
 object MultiBoost {
 
@@ -51,12 +51,12 @@ object MultiBoost {
     scopt.Read.reads(BaseLearnerType withName _)
 
   case class Params(
-      trainingData: String = null,
-      testingData: String = null,
-      model: String = null,
-      numIters: Int = 20,
-      baseLearner: BaseLearnerType = DecisionStump,
-      strongLearner: StrongLearnerType = AdaBoostMH)
+    trainingData: String = null,
+    testingData: String = null,
+    model: String = null,
+    numIters: Int = 20,
+    baseLearner: BaseLearnerType = DecisionStump,
+    strongLearner: StrongLearnerType = AdaBoostMH)
 
   def main(args: Array[String]) {
     val parser = new OptionParser[Params]("MultiBoost") {
@@ -75,24 +75,25 @@ object MultiBoost {
         .action((x, c) => c.copy(numIters = x))
       opt[StrongLearnerType]("strongLearner")
         .text(s"the strong learner algorithm (${StrongLearnerType.values.mkString(",")}}),"
-            + s" default: AdaBoostMH.")
+          + s" default: AdaBoostMH.")
         .action((x, c) => c.copy(strongLearner = x))
       opt[BaseLearnerType]("baseLearner")
         .text(s"the base learner algorithm (${BaseLearnerType.values.mkString(",")}),"
-            + s" default: DecisionStump.")
+          + s" default: DecisionStump.")
         .action((x, c) => c.copy(baseLearner = x))
     }
-    parser.parse(args, Params()) map { case params: Params =>
+    parser.parse(args, Params()) map {
+      case params: Params =>
 
-      // Currently we only support AdaBoost.MH with Decision Stump as base learner.
-      if (params.baseLearner != DecisionStump
+        // Currently we only support AdaBoost.MH with Decision Stump as base learner.
+        if (params.baseLearner != DecisionStump
           && params.strongLearner != AdaBoostMH) {
-        println(s"Currently we only support Adaboost.MH with DecisionStump.")
-        sys.exit(1)
-      }
+          println(s"Currently we only support Adaboost.MH with DecisionStump.")
+          sys.exit(1)
+        }
 
-      // execute the training
-      run(params)
+        // execute the training
+        run(params)
     } getOrElse {
       sys.exit(1)
     }
@@ -115,13 +116,11 @@ object MultiBoost {
     val numFeatureDimensions = sample1.features.size
 
     val baseLearnerAlgo = new DecisionStumpAlgorithm(numClasses, numFeatureDimensions)
-    val strongLearnerAlgo = new AdaBoostMHAlgorithm[
-        DecisionStumpModel,
-        DecisionStumpAlgorithm](
-        baseLearnerAlgo,
-        numClasses,
-        numFeatureDimensions,
-        params.numIters)
+    val strongLearnerAlgo = new AdaBoostMHAlgorithm[DecisionStumpModel, DecisionStumpAlgorithm](
+      baseLearnerAlgo,
+      numClasses,
+      numFeatureDimensions,
+      params.numIters)
 
     println("Start training...")
     val model = strongLearnerAlgo.run(trainingData)
@@ -134,8 +133,9 @@ object MultiBoost {
     println("Writing done.")
 
     println("Start testing...")
-    val predicts = testingData.map { case s: MultiLabeledPoint =>
-      model predict s.features
+    val predicts = testingData.map {
+      case s: MultiLabeledPoint =>
+        model predict s.features
     }.cache()
     println("Testing done.")
 
@@ -151,58 +151,67 @@ object MultiBoost {
     val f1Score = computeF1Score(precision, recall)
 
     println(s"Num of training samples: ${trainingData.count}\n"
-        + s"Num of testing samples: ${testingData.count}\n"
-        + s"Testing hamming loss is: $hammingLoss\n"
-        + s"Testing accuracy is: $accuracy\n"
-        + s"Testing strict accuracy is: $strictAccuracy\n"
-        + s"Testing precision is: $precision\n"
-        + s"Testing recall is: $recall\n"
-        + s"F1 score is: $f1Score")
+      + s"Num of testing samples: ${testingData.count}\n"
+      + s"Testing hamming loss is: $hammingLoss\n"
+      + s"Testing accuracy is: $accuracy\n"
+      + s"Testing strict accuracy is: $strictAccuracy\n"
+      + s"Testing precision is: $precision\n"
+      + s"Testing recall is: $recall\n"
+      + s"F1 score is: $f1Score")
     sc.stop()
   }
 
   def computeHammingLoss(predictsAndLabels: RDD[(Array[Double], Array[Double])]): Double = {
-    predictsAndLabels.flatMap { case (ps, ls) =>
-      (ps zip ls) filter { case (p, l) =>
-        p * l < 0.0
-      }
+    predictsAndLabels.flatMap {
+      case (ps, ls) =>
+        (ps zip ls) filter {
+          case (p, l) =>
+            p * l < 0.0
+        }
     }.count().toDouble /
       (predictsAndLabels.count() * predictsAndLabels.take(1)(0)._2.size)
   }
 
   def computePrecision(predictsAndLabels: RDD[(Array[Double], Array[Double])]): Double = {
-    val positiveSet = predictsAndLabels.flatMap { case (predicts, labels) =>
-      (predicts zip labels) filter ( _._1 > 0.0)
+    val positiveSet = predictsAndLabels.flatMap {
+      case (predicts, labels) =>
+        (predicts zip labels) filter (_._1 > 0.0)
     }
 
-    positiveSet.filter { case (predict, label) =>
-      predict * label > 0.0
+    positiveSet.filter {
+      case (predict, label) =>
+        predict * label > 0.0
     }.count().toDouble / positiveSet.count()
   }
 
   def computeRecall(predictsAndLabels: RDD[(Array[Double], Array[Double])]): Double = {
-    val trueSet = predictsAndLabels.flatMap { case (predicts, labels) =>
-      (predicts zip labels) filter ( _._2 > 0.0 )
+    val trueSet = predictsAndLabels.flatMap {
+      case (predicts, labels) =>
+        (predicts zip labels) filter (_._2 > 0.0)
     }
 
-    trueSet.filter { case (predict, label) =>
-      predict * label > 0.0
+    trueSet.filter {
+      case (predict, label) =>
+        predict * label > 0.0
     }.count().toDouble / trueSet.count()
   }
 
   def computeAccuracy(predictsAndLabels: RDD[(Array[Double], Array[Double])]): Double = {
-    val total = predictsAndLabels.flatMap { case (predicts, labels) =>
-      predicts zip labels
+    val total = predictsAndLabels.flatMap {
+      case (predicts, labels) =>
+        predicts zip labels
     }
 
-    total.filter {case (p, l) => p * l > 0.0}.count().toDouble / total.count()
+    total.filter { case (p, l) => p * l > 0.0 }.count().toDouble / total.count()
   }
 
   def computeStrictAccuracy(predictsAndLabels: RDD[(Array[Double], Array[Double])]): Double = {
-    predictsAndLabels.filter { case (predicts, labels) =>
-      (predicts zip labels).filter{ case (p, l) =>
-        p * l > 0.0
-      }.size == predicts.size
+    predictsAndLabels.filter {
+      case (predicts, labels) =>
+        (predicts zip labels).filter {
+          case (p, l) =>
+            p * l > 0.0
+        }.size == predicts.size
     }.count().toDouble / predictsAndLabels.count().toDouble
   }
 
