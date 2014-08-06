@@ -74,7 +74,7 @@ class DecisionStumpAlgorithm(
    */
   override def run(dataSet: RDD[WeightedMultiLabeledPoint]): DecisionStumpModel = {
     // 0. do sub-sampling
-    val sampledDataSet = dataSet.sample(false, 0.1).cache()
+    val sampledDataSet = dataSet.sample(false, 0.4).cache()
     // 1. class-wise edge
     val classWiseEdges = sampledDataSet.aggregate(
       Vectors.dense(Array.fill[Double](numClasses)(0.0)))({
