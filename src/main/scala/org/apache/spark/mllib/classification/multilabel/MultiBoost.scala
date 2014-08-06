@@ -67,9 +67,12 @@ object MultiBoost {
         .action((x, c) => c.copy(trainingData = x))
       opt[String]("testing_data")
         .text(s"paths to testing data in MultiLabeledPoint format.")
+        .required()
+        .action((x, c) => c.copy(testingData = x))
       opt[String]("model")
         .text(s"output path to persisted model.")
         .required()
+        .action((x, c) => c.copy(model = x))
       opt[Int]("numIterations")
         .text(s"num of iterations for the strong learner. default=20")
         .action((x, c) => c.copy(numIters = x))
@@ -92,6 +95,8 @@ object MultiBoost {
           sys.exit(1)
         }
 
+        println(s"params: $params")
+
         // execute the training
         run(params)
     } getOrElse {
@@ -112,6 +117,7 @@ object MultiBoost {
       s"Num of testing samples: ${testingData.count()}")
 
     val sample1 = testingData.take(1)(0)
+    println(s"Sample1: $sample1")
     val numClasses = sample1.labels.size
     val numFeatureDimensions = sample1.features.size
 

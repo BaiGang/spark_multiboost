@@ -136,7 +136,7 @@ object Vectors {
     parseNumeric(NumericParser.parse(s))
   }
 
-  private[mllib] def parseNumeric(any: Any): Vector = {
+  def parseNumeric(any: Any): Vector = {
     any match {
       case values: Array[Double] =>
         Vectors.dense(values)
