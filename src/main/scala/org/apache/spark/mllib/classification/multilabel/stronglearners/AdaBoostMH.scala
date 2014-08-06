@@ -81,11 +81,10 @@ object AdaBoostMHModel {
 
 @Experimental
 class AdaBoostMHAlgorithm[BM <: BaseLearnerModel, BA <: BaseLearnerAlgorithm[BM]](
-  baseLearnerAlgo: BA,
-  _numClasses: Int,
-  _numFeatureDimensions: Int,
-  numIterations: Int)
-    extends StrongLearnerAlgorithm[BM, BA, AdaBoostMHModel[BM]] {
+    baseLearnerAlgo: BA,
+    _numClasses: Int,
+    _numFeatureDimensions: Int,
+    numIterations: Int) extends StrongLearnerAlgorithm[BM, BA, AdaBoostMHModel[BM]] {
 
   override def numClasses = _numClasses
   override def numFeatureDimensions = _numFeatureDimensions
