@@ -91,7 +91,7 @@ class DecisionStumpSuite extends FunSuite with LocalSparkContext {
   }
 
   test("Test training a very basic decision stump model.") {
-    val decisionStumpAlgo = new DecisionStumpAlgorithm(2, 3)
+    val decisionStumpAlgo = new DecisionStumpAlgorithm(2, 3, 1.0)
     val decisionStumpModel: DecisionStumpModel = decisionStumpAlgo.run(dataSet)
 
     // TODO: use multi-label metrics in PR https://github.com/apache/spark/pull/1270
