@@ -25,8 +25,7 @@ import org.apache.spark.mllib.classification.multilabel.WeightedMultiLabeledPoin
  * The Hamming tree model.
  * A basic tree learner adapted to the multi-class setup of AdaBoost.MH.
  */
-class HammingTreeModel
-    extends BaseLearnerModel {
+class HammingTreeModel extends BaseLearnerModel {
 
   /**
    * Given the feature vector, predict the labels.
@@ -57,10 +56,9 @@ class HammingTreeModel
  * @param numNodes Num of nodes in a tree.
  */
 class HammingTreeAlgorithm(
-  _numClasses: Int,
-  _numFeatureDimensions: Int,
-  _numNodes: Int)
-    extends BaseLearnerAlgorithm[HammingTreeModel] {
+    _numClasses: Int,
+    _numFeatureDimensions: Int,
+    numNodes: Int) extends BaseLearnerAlgorithm[HammingTreeModel] {
 
   override def numClasses = _numClasses
   override def numFeatureDimensions = _numFeatureDimensions
@@ -68,9 +66,10 @@ class HammingTreeAlgorithm(
   /**
    * Procedure for training a HammingTreeModel.
    * @param dataSet The weighted training data set.
+   * @param seed The random seed for samplers.
    * @return A HammingTreeModel trained with the dataset.
    */
-  def run(dataSet: RDD[WeightedMultiLabeledPoint]): HammingTreeModel = {
+  def run(dataSet: RDD[WeightedMultiLabeledPoint], seed: Long): HammingTreeModel = {
     // TODO: training of the tree
     new HammingTreeModel()
   }

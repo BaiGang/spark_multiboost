@@ -23,6 +23,7 @@ import org.apache.spark.SparkContext._
 import org.apache.spark.annotation.Experimental
 import org.apache.spark.rdd.RDD
 import org.apache.spark.Logging
+import org.apache.spark.util.random.BernoulliSampler
 
 @Experimental
 case class FeatureCut(
@@ -61,18 +62,21 @@ class DecisionStumpModel(
 class DecisionStumpAlgorithm(
   _numClasses: Int,
   _numFeatureDimensions: Int,
-  sampleRate: Double = 0.3) extends BaseLearnerAlgorithm[DecisionStumpModel]
+  sampleRate: Double = 0.3,
+  featureRate: Double = 1.0) extends BaseLearnerAlgorithm[DecisionStumpModel]
     with Serializable with Logging {
-  require(sampleRate > 0.0 && sampleRate <= 1.0)
+  require(sampleRate > 0.0 && sampleRate <= 1.0, s"sampleRate $sampleRate is out of range.")
+  require(featureRate > 0.0 && featureRate <= 1.0, s"feature downSample Rate $featureRate is out of range.")
   override def numClasses = _numClasses
   override def numFeatureDimensions = _numFeatureDimensions
 
   /**
    * Train the DecisionStumpModel.
    * @param dataSet The data set.
+   * @param seed The seed for the random sampler.
    * @return
    */
-  override def run(dataSet: RDD[WeightedMultiLabeledPoint]): DecisionStumpModel = {
+  override def run(dataSet: RDD[WeightedMultiLabeledPoint], seed: Long = 0): DecisionStumpModel = {
     // 0. do sub-sampling
     val sampledDataSet = dataSet.sample(false, sampleRate).cache()
     // 1. class-wise edge
@@ -91,9 +95,14 @@ class DecisionStumpAlgorithm(
       })
 
     // 2. for each feature, select the best split
+    // 2.1 select a subset of feature indices
+    val bernoulliSampler = new BernoulliSampler[Int](featureRate)
+    bernoulliSampler.setSeed(seed)
+    val selectedFeatureIndices = bernoulliSampler.sample(Iterator.range(0, numFeatureDimensions))
+
     val (totalEnergy, bestFeature, bestThreshold, alpha: Double, votesVec) = {
       for {
-        featureIndex <- 0 until numFeatureDimensions
+        featureIndex <- selectedFeatureIndices
 
         // TODO: use sortBy[K] instead of a series of operations
         sortedFeatDataSet = sampledDataSet

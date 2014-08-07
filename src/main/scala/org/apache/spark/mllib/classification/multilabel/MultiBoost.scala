@@ -55,7 +55,8 @@ object MultiBoost {
     testingData: String = null,
     model: String = null,
     numIters: Int = 20,
-    sampleRate: Double = 0.4,
+    sampleRate: Double = 1.0,
+    featureRate: Double = 1.0,
     baseLearner: BaseLearnerType = DecisionStump,
     strongLearner: StrongLearnerType = AdaBoostMH)
 
@@ -77,6 +78,9 @@ object MultiBoost {
       opt[Double]("sample_rate")
         .text(s"rate of down-sampling the training dataset, trading accuracy for efficiency.")
         .action((x, c) => c.copy(sampleRate = x))
+      opt[Double]("feature_rate")
+        .text(s"rate of down-sampling the feature set.")
+        .action((x, c) => c.copy(featureRate = x))
       opt[Int]("num_iterations")
         .text(s"num of iterations for the strong learner. default=20")
         .action((x, c) => c.copy(numIters = x))
@@ -125,7 +129,8 @@ object MultiBoost {
     val numClasses = sample1.labels.size
     val numFeatureDimensions = sample1.features.size
 
-    val baseLearnerAlgo = new DecisionStumpAlgorithm(numClasses, numFeatureDimensions, params.sampleRate)
+    val baseLearnerAlgo = new DecisionStumpAlgorithm(numClasses, numFeatureDimensions,
+      params.sampleRate, params.featureRate)
     val strongLearnerAlgo = new AdaBoostMHAlgorithm[DecisionStumpModel, DecisionStumpAlgorithm](
       baseLearnerAlgo,
       numClasses,
