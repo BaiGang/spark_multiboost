@@ -55,6 +55,7 @@ object MultiBoost {
     testingData: String = null,
     model: String = null,
     numIters: Int = 20,
+    numPartitions: Int = 4,
     sampleRate: Double = 1.0,
     featureRate: Double = 1.0,
     baseLearner: BaseLearnerType = DecisionStump,
@@ -84,6 +85,9 @@ object MultiBoost {
       opt[Int]("num_iterations")
         .text(s"num of iterations for the strong learner. default=20")
         .action((x, c) => c.copy(numIters = x))
+      opt[Int]("num_partitions")
+        .text(s"num of partitions for sc.textFile")
+        .action((x, c) => c.copy(numPartitions = x))
       opt[StrongLearnerType]("strongLearner")
         .text(s"the strong learner algorithm (${StrongLearnerType.values.mkString(",")}}),"
           + s" default: AdaBoostMH.")
@@ -115,10 +119,10 @@ object MultiBoost {
   def run(params: Params) {
     val conf = new SparkConf().setAppName("MultiBoost")
     val sc = new SparkContext(conf)
-    val trainingData = sc.textFile(params.trainingData, sc.defaultMinPartitions)
+    val trainingData = sc.textFile(params.trainingData, params.numPartitions)
       .map(MultiLabeledPointParser.parse)
 
-    val testingData = sc.textFile(params.testingData, sc.defaultMinPartitions)
+    val testingData = sc.textFile(params.testingData, params.numPartitions)
       .map(MultiLabeledPointParser.parse)
 
     println(s"Num of training samples: ${trainingData.count()}\n" +
