@@ -98,16 +98,24 @@ class AdaBoostMHAlgorithm[BM <: BaseLearnerModel, BA <: BaseLearnerAlgorithm[BM]
       dataSet: RDD[WeightedMultiLabeledPoint],
       itersRemained: Int): List[BM] = {
       if (itersRemained == 0) {
+        println("Finished all iterations!")
         accumBaseLearners
       } else {
+
+        println(s"$itersRemained iterations remaied. Now training a new base learner...")
+
         // 1. train a new base learner
-        val baseLearner = baseLearnerAlgo.run(dataSet)
+        val baseLearner = baseLearnerAlgo.run(dataSet, 11367L + 3 * itersRemained)
+
+        println("Now getting the hypothesis...")
 
         // 2. get the hypothesis
         val predictsAndPoints = dataSet map { wmlPoint =>
           (baseLearner.predict(wmlPoint.data.features),
             wmlPoint)
         }
+
+        println("Now do re-weighting...")
 
         // 3. sum up the normalize factor
         val summedZ = predictsAndPoints.flatMap {
@@ -128,8 +136,10 @@ class AdaBoostMHAlgorithm[BM <: BaseLearnerModel, BA <: BaseLearnerAlgorithm[BM]
               wmlPoint.data)
         }
 
+        println("Starting next iteration...")
+
         // 5. next recursion
-        accumBoosting(baseLearner :: accumBaseLearners, reweightedDataSet, itersRemained - 1)
+        accumBoosting(accumBaseLearners :+ baseLearner, reweightedDataSet, itersRemained - 1)
       }
     }
 
