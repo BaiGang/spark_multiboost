@@ -56,8 +56,13 @@ class DecisionStumpSuite extends FunSuite with LocalSparkContext {
 
   test("Find best split threshold on a given feature.") {
 
+    val featLabelWeightTriplets = dataSet.map { wmlp =>
+      (wmlp.data.features(1),
+        wmlp.data.labels,
+        wmlp.weights)
+    }
     val (votes, threshold, edge) = DecisionStumpAlgorithm.findBestStumpOnFeature(
-      dataSet, 1, Vectors.dense(0.0, -0.125))
+      featLabelWeightTriplets, Vectors.dense(0.0, -0.125))
 
     // In dataSet, there is an obvious gap in feature 1. So threshold is optimally 0.7.
     // The weighted per-class error rate is:

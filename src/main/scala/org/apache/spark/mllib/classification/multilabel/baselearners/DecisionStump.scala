@@ -78,7 +78,7 @@ with Serializable with Logging {
    */
   override def run(dataSet: RDD[WeightedMultiLabeledPoint], seed: Long = 0): DecisionStumpModel = {
     // 0. do sub-sampling
-    val sampledDataSet = dataSet.sample(false, sampleRate, seed).cache()
+    val sampledDataSet = dataSet.sample(false, sampleRate, seed)
     // 1. class-wise edge
     val classWiseEdges = sampledDataSet.aggregate(
       Vectors.dense(Array.fill[Double](numClasses)(0.0)))({
@@ -100,20 +100,21 @@ with Serializable with Logging {
     bernoulliSampler.setSeed(seed)
     val selectedFeatureIndices = bernoulliSampler.sample(Iterator.range(0, numFeatureDimensions))
 
+    // 2.2 do the training
     val (totalEnergy, bestFeature, bestThreshold, alpha: Double, votesVec) = {
       for {
         featureIndex <- selectedFeatureIndices
 
         // TODO: use sortBy[K] instead of a series of operations
         sortedFeatDataSet = sampledDataSet
-          .keyBy[Double](wmlp => wmlp.data.features(featureIndex))
+          .map(wmlp => (wmlp.data.features(featureIndex), wmlp.data.labels, wmlp.weights))
+          .keyBy[Double](triplet => triplet._1)
           .sortByKey(ascending = true, numPartitions = sampledDataSet.partitions.size)
           .values
         // sortedFeatDataSet = sampledDataSet.sortBy(wmlp => wmlp.data.features(featureIndex))
 
         (votes, threshold, edge) = DecisionStumpAlgorithm.findBestStumpOnFeature(
           sortedFeatDataSet,
-          featureIndex,
           classWiseEdges)
 
         edgeNorm = edge.toArray.reduce(math.abs(_) + math.abs(_))
@@ -153,14 +154,12 @@ object DecisionStumpAlgorithm {
    * prohibitively inefficient. Keep it for now. And I will optimize and
    * fix this after I set up the learning framework.
    *
-   * @param sortedFeatDataSet The sorted data set on this feature.
-   * @param featureIndex The feature index.
+   * @param sortedFeatLabelSet The data set of (feat, label, weight), sorted on feature.
    * @param classWiseEdges The initial edge for each class label.
    * @return (votes:Vector, thresh:Double, edge:Vector)
    */
   def findBestStumpOnFeature(
-    sortedFeatDataSet: RDD[WeightedMultiLabeledPoint],
-    featureIndex: Int,
+    sortedFeatLabelSet: RDD[(Double, Vector, Vector)],
     classWiseEdges: Vector): (Vector, Double, Vector) = {
 
     /**
@@ -179,18 +178,18 @@ object DecisionStumpAlgorithm {
       override def toString = bestEdge + ", " + accumEdge + ", " + bestThresh + ", " + preFeatureVal
     }
 
-    val bestStump = sortedFeatDataSet.aggregate(
+    val bestStump = sortedFeatLabelSet.aggregate(
       AccBestStumpData(
         classWiseEdges,
         classWiseEdges,
         -1e20,
         -1e19))({
         // the seqOp
-        case (acc: AccBestStumpData, wmlPoint: WeightedMultiLabeledPoint) =>
+        case (acc: AccBestStumpData, featLabelWeightTriplet: (Double, Vector, Vector)) =>
 
           val updatedEdge = Vectors.dense({
             for (i <- 0 until acc.accumEdge.size)
-              yield acc.accumEdge(i) - 2.0 * wmlPoint.weights(i) * wmlPoint.data.labels(i)
+              yield acc.accumEdge(i) - 2.0 * featLabelWeightTriplet._2(i) * featLabelWeightTriplet._3(i)
           }.toArray)
 
           if (acc.preFeatureVal == -1e19) {
@@ -199,23 +198,23 @@ object DecisionStumpAlgorithm {
               acc.bestEdge,
               updatedEdge,
               -1e20,
-              wmlPoint.data.features(featureIndex))
+              featLabelWeightTriplet._1)
           } else {
             // update the threshold if the new edge on featureIndex is better
-            if (acc.preFeatureVal != wmlPoint.data.features(featureIndex)
+            if (acc.preFeatureVal != featLabelWeightTriplet._1
               && acc.accumEdge.toArray.reduce(math.abs(_) + math.abs(_))
               > acc.bestEdge.toArray.reduce(math.abs(_) + math.abs(_))) {
               AccBestStumpData(
                 acc.accumEdge,
                 updatedEdge,
-                0.5 * (acc.preFeatureVal + wmlPoint.data.features(featureIndex)),
-                wmlPoint.data.features(featureIndex))
+                0.5 * (acc.preFeatureVal + featLabelWeightTriplet._1),
+                featLabelWeightTriplet._1)
             } else {
               AccBestStumpData(
                 acc.bestEdge,
                 updatedEdge,
                 acc.bestThresh,
-                wmlPoint.data.features(featureIndex))
+                featLabelWeightTriplet._1)
             }
           }
       }, {
