@@ -60,11 +60,11 @@ class DecisionStumpModel(
 
 @Experimental
 class DecisionStumpAlgorithm(
-  _numClasses: Int,
-  _numFeatureDimensions: Int,
-  sampleRate: Double = 0.3,
-  featureRate: Double = 1.0) extends BaseLearnerAlgorithm[DecisionStumpModel]
-    with Serializable with Logging {
+    _numClasses: Int,
+    _numFeatureDimensions: Int,
+    sampleRate: Double = 0.3,
+    featureRate: Double = 1.0) extends BaseLearnerAlgorithm[DecisionStumpModel]
+with Serializable with Logging {
   require(sampleRate > 0.0 && sampleRate <= 1.0, s"sampleRate $sampleRate is out of range.")
   require(featureRate > 0.0 && featureRate <= 1.0, s"feature downSample Rate $featureRate is out of range.")
   override def numClasses = _numClasses
@@ -78,7 +78,7 @@ class DecisionStumpAlgorithm(
    */
   override def run(dataSet: RDD[WeightedMultiLabeledPoint], seed: Long = 0): DecisionStumpModel = {
     // 0. do sub-sampling
-    val sampledDataSet = dataSet.sample(false, sampleRate).cache()
+    val sampledDataSet = dataSet.sample(false, sampleRate, seed).cache()
     // 1. class-wise edge
     val classWiseEdges = sampledDataSet.aggregate(
       Vectors.dense(Array.fill[Double](numClasses)(0.0)))({
