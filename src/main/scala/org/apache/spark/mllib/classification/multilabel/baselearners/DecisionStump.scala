@@ -78,7 +78,7 @@ with Serializable with Logging {
    */
   override def run(dataSet: RDD[WeightedMultiLabeledPoint], seed: Long = 0): DecisionStumpModel = {
     // 0. do sub-sampling
-    val sampledDataSet = dataSet.sample(false, sampleRate, seed)
+    val sampledDataSet = dataSet.sample(false, sampleRate, seed).cache()
     // 1. class-wise edge
     val classWiseEdges = sampledDataSet.aggregate(
       Vectors.dense(Array.fill[Double](numClasses)(0.0)))({
@@ -111,7 +111,6 @@ with Serializable with Logging {
           .keyBy[Double](triplet => triplet._1)
           .sortByKey(ascending = true, numPartitions = sampledDataSet.partitions.size)
           .values
-        // sortedFeatDataSet = sampledDataSet.sortBy(wmlp => wmlp.data.features(featureIndex))
 
         (votes, threshold, edge) = DecisionStumpAlgorithm.findBestStumpOnFeature(
           sortedFeatDataSet,
