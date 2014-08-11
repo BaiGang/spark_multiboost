@@ -64,9 +64,13 @@ class DecisionStumpAlgorithm(
     _numFeatureDimensions: Int,
     sampleRate: Double = 0.3,
     featureRate: Double = 1.0) extends BaseLearnerAlgorithm[DecisionStumpModel]
-with Serializable with Logging {
-  require(sampleRate > 0.0 && sampleRate <= 1.0, s"sampleRate $sampleRate is out of range.")
-  require(featureRate > 0.0 && featureRate <= 1.0, s"feature downSample Rate $featureRate is out of range.")
+  with Serializable with Logging {
+
+  require(sampleRate > 0.0 && sampleRate <= 1.0,
+    s"sampleRate $sampleRate is out of range.")
+  require(featureRate > 0.0 && featureRate <= 1.0,
+    s"feature downSample Rate $featureRate is out of range.")
+  
   override def numClasses = _numClasses
   override def numFeatureDimensions = _numFeatureDimensions
 
@@ -78,7 +82,7 @@ with Serializable with Logging {
    */
   override def run(dataSet: RDD[WeightedMultiLabeledPoint], seed: Long = 0): DecisionStumpModel = {
     // 0. do sub-sampling
-    val sampledDataSet = dataSet.sample(false, sampleRate, seed).cache()
+    val sampledDataSet = dataSet.sample(false, sampleRate, seed)
     // 1. class-wise edge
     val classWiseEdges = sampledDataSet.aggregate(
       Vectors.dense(Array.fill[Double](numClasses)(0.0)))({
@@ -111,6 +115,7 @@ with Serializable with Logging {
           .keyBy[Double](triplet => triplet._1)
           .sortByKey(ascending = true, numPartitions = sampledDataSet.partitions.size)
           .values
+        // sortedFeatDataSet = sampledDataSet.sortBy(wmlp => wmlp.data.features(featureIndex))
 
         (votes, threshold, edge) = DecisionStumpAlgorithm.findBestStumpOnFeature(
           sortedFeatDataSet,
@@ -188,7 +193,8 @@ object DecisionStumpAlgorithm {
 
           val updatedEdge = Vectors.dense({
             for (i <- 0 until acc.accumEdge.size)
-              yield acc.accumEdge(i) - 2.0 * featLabelWeightTriplet._2(i) * featLabelWeightTriplet._3(i)
+              yield acc.accumEdge(i) -
+              2.0 * featLabelWeightTriplet._2(i) * featLabelWeightTriplet._3(i)
           }.toArray)
 
           if (acc.preFeatureVal == -1e19) {

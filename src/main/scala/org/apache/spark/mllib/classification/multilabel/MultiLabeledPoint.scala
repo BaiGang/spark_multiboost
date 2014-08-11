@@ -59,10 +59,8 @@ object MultiLabeledPointParser {
     NumericParser.parse(s) match {
       case Seq(labels: Any, features: Any) =>
         MultiLabeledPoint(
-          //Vectors.parseNumeric(labels),
-          //Vectors.parseNumeric(features))
-          parseNumericVectors(labels),
-          parseNumericVectors(features))
+          Vectors.parseNumeric(labels),
+          Vectors.parseNumeric(features))
       case other =>
         throw new SparkException(s"Cannot parse $other.")
     }
@@ -72,13 +70,10 @@ object MultiLabeledPointParser {
     NumericParser.parse(s) match {
       case Seq(weights: Any, Seq(labels: Any, features: Any)) =>
         WeightedMultiLabeledPoint(
-          //Vectors.parseNumeric(weights),
-          parseNumericVectors(weights),
+          Vectors.parseNumeric(weights),
           MultiLabeledPoint(
-            //Vectors.parseNumeric(labels),
-            //Vectors.parseNumeric(features)))
-            parseNumericVectors(labels),
-            parseNumericVectors(features)))
+            Vectors.parseNumeric(labels),
+            Vectors.parseNumeric(features)))
       case other =>
         throw new SparkException(s"Cannot parse $other")
     }

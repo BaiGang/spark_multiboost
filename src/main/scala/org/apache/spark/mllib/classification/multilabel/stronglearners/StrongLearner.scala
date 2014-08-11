@@ -18,7 +18,9 @@
 package org.apache.spark.mllib.classification.multilabel.stronglearners
 
 import org.apache.spark.annotation.Experimental
-import org.apache.spark.mllib.classification.multilabel.{ MultiLabeledPoint, MultiLabelClassificationAlgorithm, MultiLabelClassificationModel }
+import org.apache.spark.mllib.classification.multilabel.MultiLabeledPoint
+import org.apache.spark.mllib.classification.multilabel.MultiLabelClassificationAlgorithm
+import org.apache.spark.mllib.classification.multilabel.MultiLabelClassificationModel
 import org.apache.spark.rdd.RDD
 
 @Experimental
