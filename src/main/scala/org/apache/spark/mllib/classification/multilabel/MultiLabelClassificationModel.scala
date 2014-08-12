@@ -20,15 +20,20 @@ package org.apache.spark.mllib.classification.multilabel
 import org.apache.spark.annotation.Experimental
 import org.apache.spark.mllib.linalg.Vector
 import org.apache.spark.rdd.RDD
+import org.apache.spark.Logging
 
 @Experimental
-trait MultiLabelClassificationModel extends Serializable {
+trait MultiLabelClassificationModel extends Serializable
+  with Logging {
+
   def predict(testData: RDD[Vector]): RDD[Vector]
   def predict(testData: Vector): Vector
 }
 
 @Experimental
-trait MultiLabelClassificationAlgorithm[M <: MultiLabelClassificationModel] extends Serializable {
+trait MultiLabelClassificationAlgorithm[M <: MultiLabelClassificationModel]
+  extends Serializable with Logging {
+
   // XXX: no abstract interface for now
   // def run(dataSet: RDD[WeightedMultiLabeledPoint]): M
   // def run(dataSet: RDD[MultiLabeledPoint]): M
