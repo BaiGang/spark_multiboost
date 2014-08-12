@@ -160,9 +160,10 @@ object AdaBoostMHAlgorithm {
   def initWeights(
     numClasses: Int,
     dataSet: RDD[MultiLabeledPoint]): RDD[WeightedMultiLabeledPoint] = {
+    val numSamples = dataSet.cout
     val initialWeight = Vectors.dense(
       Array.fill[Double](numClasses)(
-        1.0 / (numClasses * dataSet.count())))
+        1.0 / (numClasses * numSamples)))
     dataSet map {
       case mlPoint: MultiLabeledPoint =>
         WeightedMultiLabeledPoint(initialWeight, mlPoint)
