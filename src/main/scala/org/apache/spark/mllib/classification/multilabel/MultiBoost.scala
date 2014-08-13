@@ -59,7 +59,8 @@ object MultiBoost {
     sampleRate: Double = 1.0,
     featureRate: Double = 1.0,
     baseLearner: BaseLearnerType = DecisionStump,
-    strongLearner: StrongLearnerType = AdaBoostMH)
+    strongLearner: StrongLearnerType = AdaBoostMH,
+    jobDescription: String = "Spark MultiBoost Classification.")
 
   def main(args: Array[String]) {
     val parser = new OptionParser[Params]("MultiBoost") {
@@ -96,6 +97,9 @@ object MultiBoost {
         .text(s"the base learner algorithm (${BaseLearnerType.values.mkString(",")}),"
           + s" default: DecisionStump.")
         .action((x, c) => c.copy(baseLearner = x))
+      opt[String]("job_description")
+        .text(s"the description info in the Name field of spark/hadoop cluster ui.")
+        .action((x, c) => c.copy(jobDescription = x))
     }
     parser.parse(args, Params()) map {
       case params: Params =>
@@ -117,7 +121,7 @@ object MultiBoost {
   }
 
   def run(params: Params) {
-    val conf = new SparkConf().setAppName("MultiBoost")
+    val conf = new SparkConf().setAppName(params.jobDescription)
     val sc = new SparkContext(conf)
     val trainingData = sc.textFile(params.trainingData, params.numPartitions)
       .map(MultiLabeledPointParser.parse)
