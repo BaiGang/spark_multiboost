@@ -69,7 +69,7 @@ class HammingTreeAlgorithm(
    * @param seed The random seed for samplers.
    * @return A HammingTreeModel trained with the dataset.
    */
-  def run(dataSet: RDD[WeightedMultiLabeledPoint], seed: Long): HammingTreeModel = {
+  def run(dataSet: RDD[Iterable[WeightedMultiLabeledPoint]], seed: Long): HammingTreeModel = {
     // TODO: training of the tree
     new HammingTreeModel()
   }

@@ -22,9 +22,11 @@ import org.apache.spark.mllib.linalg.Vector
 import org.apache.spark.rdd.RDD
 import org.apache.spark.Logging
 
+type DataSet = Iterable[WeightedMultiLabeledPoint]
+
 @Experimental
 trait MultiLabelClassificationModel extends Serializable
-  with Logging {
+    with Logging {
 
   def predict(testData: RDD[Vector]): RDD[Vector]
   def predict(testData: Vector): Vector
@@ -32,7 +34,7 @@ trait MultiLabelClassificationModel extends Serializable
 
 @Experimental
 trait MultiLabelClassificationAlgorithm[M <: MultiLabelClassificationModel]
-  extends Serializable with Logging {
+    extends Serializable with Logging {
 
   // XXX: no abstract interface for now
   // def run(dataSet: RDD[WeightedMultiLabeledPoint]): M

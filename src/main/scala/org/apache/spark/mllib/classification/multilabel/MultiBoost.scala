@@ -25,8 +25,7 @@ import org.apache.spark.mllib.classification.multilabel.baselearners.DecisionStu
 import org.apache.spark.mllib.classification.multilabel.baselearners.DecisionStumpModel
 import org.apache.spark.{ SparkContext, SparkConf }
 import org.apache.spark.rdd.RDD
-import org.apache.spark.mllib.classification.multilabel.MultiLabeledPoint
-import org.apache.spark.mllib.classification.multilabel.MultiLabeledPointParser
+import org.apache.spark.mllib.classification.multilabel.{ WeightedMultiLabeledPoint, MultiLabeledPoint, MultiLabeledPointParser }
 
 object MultiBoost {
 
