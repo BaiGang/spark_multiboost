@@ -22,8 +22,6 @@ import org.apache.spark.mllib.linalg.Vector
 import org.apache.spark.rdd.RDD
 import org.apache.spark.Logging
 
-type DataSet = Iterable[WeightedMultiLabeledPoint]
-
 @Experimental
 trait MultiLabelClassificationModel extends Serializable
     with Logging {

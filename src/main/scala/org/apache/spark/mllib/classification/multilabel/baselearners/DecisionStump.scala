@@ -76,79 +76,12 @@ class DecisionStumpAlgorithm(
   override def numFeatureDimensions = _numFeatureDimensions
 
   override def run(dataSet: RDD[Iterable[WeightedMultiLabeledPoint]], seed: Long = 0): DecisionStumpModel = {
-    new DecisionStumpModel(0.5, Vectors.dense(Array(1.0, -1.0, 1.0)), new FeatureCut(0, 0.5))
+
+    val allSplitMetrics = dataSet flatMap DecisionStumpAlgorithm.getLocalSplitMetrics
+
+    DecisionStumpAlgorithm.findBestSplitMetrics(allSplitMetrics)
   }
 
-  /**
-   * Train the DecisionStumpModel.
-   * @param dataSet The data set.
-   * @param seed The seed for the random sampler.
-   * @return
-   */
-  def run_old(dataSet: RDD[WeightedMultiLabeledPoint], seed: Long = 0): DecisionStumpModel = {
-    // 0. do sub-sampling
-    val sampledDataSet = dataSet.sample(false, sampleRate, seed)
-    // 1. class-wise edge
-    val classWiseEdges = sampledDataSet.aggregate(
-      Vectors.dense(Array.fill[Double](numClasses)(0.0)))({
-        // the seqOp
-        (edge, point) =>
-          Vectors.dense({
-            for (l <- 0 until numClasses)
-              yield edge(l) + point.weights(l) * point.data.labels(l)
-          }.toArray)
-      }, {
-        // the combOp
-        (edge1, edge2) =>
-          Vectors.fromBreeze(edge1.toBreeze + edge2.toBreeze)
-      })
-
-    // 2. for each feature, select the best split
-    // 2.1 select a subset of feature indices
-    val bernoulliSampler = new BernoulliSampler[Int](featureRate)
-    bernoulliSampler.setSeed(seed)
-    val selectedFeatureIndices = bernoulliSampler.sample(Iterator.range(0, numFeatureDimensions))
-
-    // 2.2 do the training
-    val (totalEnergy, bestFeature, bestThreshold, alpha: Double, votesVec) = {
-      for {
-        featureIndex <- selectedFeatureIndices
-
-        // TODO: use sortBy[K] instead of a series of operations
-        sortedFeatDataSet = sampledDataSet
-          .map(wmlp => (wmlp.data.features(featureIndex), wmlp.data.labels, wmlp.weights))
-          .keyBy[Double](triplet => triplet._1)
-          .sortByKey(ascending = true, numPartitions = sampledDataSet.partitions.size)
-          .values
-        // sortedFeatDataSet = sampledDataSet.sortBy(wmlp => wmlp.data.features(featureIndex))
-
-        (votes, threshold, edge) = DecisionStumpAlgorithm.findBestStumpOnFeature(
-          sortedFeatDataSet,
-          classWiseEdges)
-
-        edgeNorm = edge.toArray.reduce(math.abs(_) + math.abs(_))
-        alpha = 0.5 * math.log((1.0 + edgeNorm) / (1.0 - edgeNorm))
-        energy = math.sqrt(1.0 - edge.toArray.foldLeft(0.0) { (s, e) => s + e * e })
-      } yield (energy, featureIndex, threshold, alpha, votes)
-    }.foldLeft((1e20, -1, -1e20, -1e20, Vectors.dense(1.0))) {
-      case (accumulativeTuple: (Double, Int, Double, Double, Vector),
-        candidateTuple: (Double, Int, Double, Double, Vector)) =>
-        if (candidateTuple._1 < accumulativeTuple._1) {
-          candidateTuple
-        } else {
-          accumulativeTuple
-        }
-    }
-
-    logInfo("Best feature [" + bestFeature + "], split value [" + bestThreshold
-      + "], with energy [" + totalEnergy + "] ")
-
-    // 3. generate the model
-    new DecisionStumpModel(
-      alpha,
-      votesVec,
-      new FeatureCut(bestFeature, bestThreshold))
-  }
 }
 
 object DecisionStumpAlgorithm {
@@ -158,6 +91,67 @@ object DecisionStumpAlgorithm {
   }
 
   /**
+   * The data abstraction of feature split metrics.
+   * @param featureCut the feature and the split value of the stump
+   * @param votes the label-dependent mapping of the stump
+   * @param edge the full multo-class edge of the stump
+   */
+  private[DecisionStumpAlgorithm] case class SplitMetric(featureCut: FeatureCut, votes: Vector, edge: Double)
+
+  def getLocalSplitMetrics(dataSet: Iterable[WeightedMultiLabeledPoint]): Iterable[SplitMetric] = {
+
+    // TODO: implementation
+    Iterable(new SplitMetric(new FeatureCut(1, 0.5), Vectors.dense(1.0), 1.0))
+  }
+
+  /**
+   * Find the best stump split to minimize the loss given all split candidates.
+   * @param splitMetrics the collection of split candidates and corresponding edges
+   * @return the best feature cut
+   */
+  def findBestSplitMetrics(splitMetrics: RDD[SplitMetric]): DecisionStumpModel = {
+
+    val (model, loss) = splitMetrics.aggregate(
+      (new DecisionStumpModel(1.0, Vectors.dense(1.0), new FeatureCut(1, 0.5)), 1e20))({ (result, item) =>
+        val alpha = getAlpha(item.edge)
+        val loss = getExpLoss(alpha, item.edge)
+        if (loss < result._2)
+          (new DecisionStumpModel(alpha, item.votes, item.featureCut), loss)
+        else
+          result
+      }, { (result1, result2) =>
+        // comOp, choose the one with smaller loss
+        if (result1._2 < result2._2)
+          result1
+        else
+          result2
+      }
+      )
+    model
+  }
+
+  /**
+   * Choose alpha value.
+   * @param gamma the edge value of the base learner
+   * @return the base learner factor
+   */
+  def getAlpha(gamma: Double) = 0.5 * math.log((1.0 + gamma) / (1.0 - gamma))
+
+  /**
+   * Get the exponential loss of the base learner.
+   * Mathematically according to [Kegl2013] Appendix A.
+   * @param alpha the base learner factor
+   * @param edge the edge value of the base learner
+   * @return the loss Z(h,W)
+   */
+  def getExpLoss(alpha: Double, edge: Double) = {
+    val expPlus = math exp alpha
+    val expMinus = 1.0 / expPlus
+    0.5 * (expPlus + expMinus - edge * (expPlus - expMinus))
+  }
+
+  /**
+   * DEPRECATED
    * Given a feature index, find the best split threshold on this feature.
    * N.B. Currently we need the data set sorted on the feature. This will be
    * prohibitively inefficient. Keep it for now. And I will optimize and
