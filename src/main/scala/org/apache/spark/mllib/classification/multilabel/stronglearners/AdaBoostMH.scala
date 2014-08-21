@@ -126,6 +126,7 @@ class AdaBoostMHAlgorithm[BM <: BaseLearnerModel, BA <: BaseLearnerAlgorithm[BM]
         val predictsAndPoints = dataSet map {
           case iterable =>
             iterable map { wmlPoint =>
+              // BUG: use strongler's prediction here!
               (baseLearner.predict(wmlPoint.data.features),
                 wmlPoint)
             }
