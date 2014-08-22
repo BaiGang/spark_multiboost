@@ -22,8 +22,11 @@ import org.apache.spark.mllib.linalg.{ Vectors, Vector }
 import org.apache.spark.SparkContext._
 import org.apache.spark.annotation.Experimental
 import org.apache.spark.rdd.RDD
+import org.apache.spark.rdd.PairRDDFunctions
+
 import org.apache.spark.Logging
 import org.apache.spark.util.random.BernoulliSampler
+import scala.collection.mutable.ArrayBuffer
 
 @Experimental
 case class FeatureCut(
@@ -75,11 +78,16 @@ class DecisionStumpAlgorithm(
   override def numClasses = _numClasses
   override def numFeatureDimensions = _numFeatureDimensions
 
-  override def run(dataSet: RDD[Iterable[WeightedMultiLabeledPoint]], seed: Long = 0): DecisionStumpModel = {
+  override def run(dataSet: RDD[Array[WeightedMultiLabeledPoint]], seed: Long = 0): DecisionStumpModel = {
 
-    val allSplitMetrics = dataSet flatMap DecisionStumpAlgorithm.getLocalSplitMetrics
+    val bernoulliSampler = new BernoulliSampler[Int](featureRate)
+    bernoulliSampler setSeed seed
 
-    DecisionStumpAlgorithm.findBestSplitMetrics(allSplitMetrics)
+    val allSplitMetrics = dataSet flatMap (DecisionStumpAlgorithm.getLocalSplitMetrics(
+      bernoulliSampler sample Iterator.range(0, numFeatureDimensions))(_))
+
+    DecisionStumpAlgorithm findBestSplitMetrics (
+      DecisionStumpAlgorithm aggregateSplitMetrics allSplitMetrics)
   }
 
 }
@@ -93,15 +101,53 @@ object DecisionStumpAlgorithm {
   /**
    * The data abstraction of feature split metrics.
    * @param featureCut the feature and the split value of the stump
-   * @param votes the label-dependent mapping of the stump
-   * @param edge the full multo-class edge of the stump
+   * @param edges the vector of class-wise edges of the stump
    */
-  private[DecisionStumpAlgorithm] case class SplitMetric(featureCut: FeatureCut, votes: Vector, edge: Double)
+  private[DecisionStumpAlgorithm] case class SplitMetric(featureCut: FeatureCut, edges: Vector)
 
-  def getLocalSplitMetrics(dataSet: Iterable[WeightedMultiLabeledPoint]): Iterable[SplitMetric] = {
+  def getLocalSplitMetrics(featureSet: Iterator[Int])(
+    dataSet: Array[WeightedMultiLabeledPoint]): Array[SplitMetric] = {
 
-    // TODO: implementation
-    Iterable(new SplitMetric(new FeatureCut(1, 0.5), Vectors.dense(1.0), 1.0))
+    val numClasses = dataSet(1).data.labels.size
+    // 1. initial edge
+    val initialEdge = dataSet.foldLeft(Array.fill(numClasses)(0.0)) { (edge, wmlp) =>
+      (for (l <- 0 until numClasses) yield edge(l) + wmlp.weights(l) * wmlp.data.labels(l)).toArray
+    }
+
+    featureSet.flatMap { featureIndex =>
+      // 2. fold to calculate split metrics on each split value
+      dataSet.sortBy(_.data.features(featureIndex)).foldLeft(
+        new ArrayBuffer[SplitMetric]() += SplitMetric(FeatureCut(-1, -1e20), Vectors.dense(initialEdge))
+      ) { (metrics, wmlp) =>
+          val updatedEdge = Vectors.dense((for (i <- 0 until wmlp.weights.size)
+            yield metrics.last.edges(i) - 2.0 * wmlp.weights(i) * wmlp.data.labels(i)).toArray)
+
+          if (metrics.last.featureCut.decisionThreshold == wmlp.data.features(featureIndex)) {
+            // update the edge, do not insert new split but update the last one
+            val updatedMetric = SplitMetric(metrics.last.featureCut, updatedEdge)
+            metrics.dropRight(1) += updatedMetric
+          } else {
+            // insert a new split
+            metrics += SplitMetric(FeatureCut(featureIndex, wmlp.data.features(featureIndex)), updatedEdge)
+          }
+        }
+    }.toArray
+  }
+
+  /**
+   * For each split, aggregate the edges from different data partitions.
+   * @param allSplitMetrics
+   * @return
+   */
+  def aggregateSplitMetrics(allSplitMetrics: RDD[SplitMetric]): RDD[SplitMetric] = {
+
+    // votes are combined as sigma(v * edge)/sigma(edge)
+    allSplitMetrics.map(m => (m.hashCode, m)).reduceByKey { (metric1, metric2) =>
+      SplitMetric(metric1.featureCut, Vectors.fromBreeze(metric1.edges.toBreeze + metric2.edges.toBreeze))
+    } map {
+      case (hash: Int, metric: SplitMetric) =>
+        metric
+    }
   }
 
   /**
@@ -111,12 +157,14 @@ object DecisionStumpAlgorithm {
    */
   def findBestSplitMetrics(splitMetrics: RDD[SplitMetric]): DecisionStumpModel = {
 
-    val (model, loss) = splitMetrics.aggregate(
+    val (model, _) = splitMetrics.aggregate(
       (new DecisionStumpModel(1.0, Vectors.dense(1.0), new FeatureCut(1, 0.5)), 1e20))({ (result, item) =>
-        val alpha = getAlpha(item.edge)
-        val loss = getExpLoss(alpha, item.edge)
+        val fullEdge = item.edges.toArray.reduce(_ + _)
+        val alpha = getAlpha(fullEdge)
+        val votes = Vectors.dense((for (e <- item.edges.toArray) yield if (e > 0.0) 1.0 else -1.0).toArray)
+        val loss = getExpLoss(alpha, fullEdge)
         if (loss < result._2)
-          (new DecisionStumpModel(alpha, item.votes, item.featureCut), loss)
+          (new DecisionStumpModel(alpha, votes, item.featureCut), loss)
         else
           result
       }, { (result1, result2) =>
@@ -125,13 +173,12 @@ object DecisionStumpAlgorithm {
           result1
         else
           result2
-      }
-      )
+      })
     model
   }
 
   /**
-   * Choose alpha value.
+   * Choose alpha value, which is the base learner factor.
    * @param gamma the edge value of the base learner
    * @return the base learner factor
    */
@@ -150,93 +197,4 @@ object DecisionStumpAlgorithm {
     0.5 * (expPlus + expMinus - edge * (expPlus - expMinus))
   }
 
-  /**
-   * DEPRECATED
-   * Given a feature index, find the best split threshold on this feature.
-   * N.B. Currently we need the data set sorted on the feature. This will be
-   * prohibitively inefficient. Keep it for now. And I will optimize and
-   * fix this after I set up the learning framework.
-   *
-   * @param sortedFeatLabelSet The data set of (feat, label, weight), sorted on feature.
-   * @param classWiseEdges The initial edge for each class label.
-   * @return (votes:Vector, thresh:Double, edge:Vector)
-   */
-  def findBestStumpOnFeature(
-    sortedFeatLabelSet: RDD[(Double, Vector, Vector)],
-    classWiseEdges: Vector): (Vector, Double, Vector) = {
-
-    /**
-     * The accumulated best stump data.
-     *
-     * @param bestEdge The best edge vector.
-     * @param accumEdge The updated edge vector of stump with v=1
-     * @param bestThresh The best threshold of the feature cut.
-     * @param preFeatureVal Feature value of the previous point.
-     */
-    case class AccBestStumpData(
-        bestEdge: Vector,
-        accumEdge: Vector,
-        bestThresh: Double,
-        preFeatureVal: Double) {
-      override def toString = bestEdge + ", " + accumEdge + ", " + bestThresh + ", " + preFeatureVal
-    }
-
-    val bestStump = sortedFeatLabelSet.aggregate(
-      AccBestStumpData(
-        classWiseEdges,
-        classWiseEdges,
-        -1e20,
-        -1e19))({
-        // the seqOp
-        case (acc: AccBestStumpData, featLabelWeightTriplet: (Double, Vector, Vector)) =>
-
-          val updatedEdge = Vectors.dense({
-            for (i <- 0 until acc.accumEdge.size)
-              yield acc.accumEdge(i) -
-              2.0 * featLabelWeightTriplet._2(i) * featLabelWeightTriplet._3(i)
-          }.toArray)
-
-          if (acc.preFeatureVal == -1e19) {
-            // initial
-            AccBestStumpData(
-              acc.bestEdge,
-              updatedEdge,
-              -1e20,
-              featLabelWeightTriplet._1)
-          } else {
-            // update the threshold if the new edge on featureIndex is better
-            if (acc.preFeatureVal != featLabelWeightTriplet._1
-              && acc.accumEdge.toArray.reduce(math.abs(_) + math.abs(_))
-              > acc.bestEdge.toArray.reduce(math.abs(_) + math.abs(_))) {
-              AccBestStumpData(
-                acc.accumEdge,
-                updatedEdge,
-                0.5 * (acc.preFeatureVal + featLabelWeightTriplet._1),
-                featLabelWeightTriplet._1)
-            } else {
-              AccBestStumpData(
-                acc.bestEdge,
-                updatedEdge,
-                acc.bestThresh,
-                featLabelWeightTriplet._1)
-            }
-          }
-      }, {
-        // the combOp
-        case (acc1: AccBestStumpData, acc2: AccBestStumpData) =>
-          val edgeSum1 = acc1.bestEdge.toArray.reduce(math.abs(_) + math.abs(_))
-          val edgeSum2 = acc2.bestEdge.toArray.reduce(math.abs(_) + math.abs(_))
-          if (edgeSum1 > edgeSum2) acc1 else acc2
-      })
-
-    val votesArray = (bestStump.bestEdge.toArray map {
-      case edge: Double =>
-        if (edge > 0.0) 1.0 else -1.0
-    }
-    ).toArray
-
-    (Vectors.dense(votesArray),
-      bestStump.bestThresh,
-      bestStump.bestEdge)
-  }
 }

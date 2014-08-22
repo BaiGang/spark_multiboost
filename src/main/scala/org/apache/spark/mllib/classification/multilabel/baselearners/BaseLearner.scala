@@ -40,6 +40,6 @@ abstract class BaseLearnerModel extends MultiLabelClassificationModel {
 @Experimental
 abstract class BaseLearnerAlgorithm[M <: BaseLearnerModel]
     extends MultiLabelClassificationAlgorithm[M] {
-  def run(dataSet: RDD[Iterable[WeightedMultiLabeledPoint]], seed: Long): M
+  def run(dataSet: RDD[Array[WeightedMultiLabeledPoint]], seed: Long): M
 }
 

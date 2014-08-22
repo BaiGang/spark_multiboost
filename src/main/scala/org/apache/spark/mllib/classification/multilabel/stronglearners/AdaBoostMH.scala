@@ -89,7 +89,7 @@ class AdaBoostMHAlgorithm[BM <: BaseLearnerModel, BA <: BaseLearnerAlgorithm[BM]
   override def numClasses = _numClasses
   override def numFeatureDimensions = _numFeatureDimensions
 
-  type DataSet = Iterable[WeightedMultiLabeledPoint]
+  type DataSet = Array[WeightedMultiLabeledPoint]
 
   def run(dataSet: RDD[MultiLabeledPoint]): AdaBoostMHModel[BM] = {
 
@@ -97,7 +97,7 @@ class AdaBoostMHAlgorithm[BM <: BaseLearnerModel, BA <: BaseLearnerAlgorithm[BM]
 
     val distributedWeightedDataSet = weightedDataSet
       .groupBy(_.hashCode() % weightedDataSet.partitions.length)
-      .map(_._2)
+      .map(_._2.toArray)
 
     /**
      *
@@ -139,7 +139,7 @@ class AdaBoostMHAlgorithm[BM <: BaseLearnerModel, BA <: BaseLearnerAlgorithm[BM]
         // 3. sum up the normalize factor
         val summedZ = predictsAndPoints.aggregate(0.0)({
           // seqOp
-          case (sum: Double, array: Iterable[(Vector, WeightedMultiLabeledPoint)]) =>
+          case (sum: Double, array: Array[(Vector, WeightedMultiLabeledPoint)]) =>
             array.foldLeft(0.0) {
               case (sum1: Double, (predict: Vector, wmlp: WeightedMultiLabeledPoint)) =>
                 (predict.toArray zip wmlp.data.labels.toArray zip wmlp.weights.toArray).map {
