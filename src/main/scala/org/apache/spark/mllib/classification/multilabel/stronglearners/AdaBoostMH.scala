@@ -48,10 +48,6 @@ class AdaBoostMHModel[BM <: MultiLabelClassificationModel](
   }
 
   override def predict(testData: Vector): Vector = {
-    baseLearners.map {
-      case baseLearner =>
-        baseLearner.predict(testData)
-    }
 
     val rawPredicts: Vector = baseLearners.foldLeft(
       Vectors.dense(Array.fill[Double](numClasses)(0.0))) {
@@ -107,12 +103,12 @@ class AdaBoostMHAlgorithm[BM <: BaseLearnerModel, BA <: BaseLearnerAlgorithm[BM]
      * @return List of base learners from the current iteration and preceding ones
      */
     def accumBoosting(
-      accumBaseLearners: List[BM],
+      accumStrongLearner: AdaBoostMHModel[BM],
       dataSet: RDD[DataSet],
-      itersRemained: Int): List[BM] = {
+      itersRemained: Int): AdaBoostMHModel[BM] = {
       if (itersRemained == 0) {
         logInfo("Finished all iterations!")
-        accumBaseLearners
+        accumStrongLearner
       } else {
 
         logInfo(s"$itersRemained iterations remaied. Now training a new base learner...")
@@ -120,14 +116,17 @@ class AdaBoostMHAlgorithm[BM <: BaseLearnerModel, BA <: BaseLearnerAlgorithm[BM]
         // 1. train a new base learner
         val baseLearner = baseLearnerAlgo.run(dataSet, 11367L + 3 * itersRemained)
 
+        // 1.1 update strong learner
+        val updatedStrongLearner = AdaBoostMHModel.apply[BM](
+            numClasses, numFeatureDimensions, accumStrongLearner.baseLearners :+ baseLearner)
+
         logInfo("Now getting the hypothesis...")
 
         // 2. get the hypothesis
         val predictsAndPoints = dataSet map {
           case iterable =>
             iterable map { wmlPoint =>
-              // BUG: use strongler's prediction here!
-              (baseLearner.predict(wmlPoint.data.features),
+              (updatedStrongLearner.predict(wmlPoint.data.features),
                 wmlPoint)
             }
         }
@@ -168,12 +167,11 @@ class AdaBoostMHAlgorithm[BM <: BaseLearnerModel, BA <: BaseLearnerAlgorithm[BM]
         logInfo("Starting next iteration...")
 
         // 5. next recursion
-        accumBoosting(accumBaseLearners :+ baseLearner, reweightedDataSet, itersRemained - 1)
+        accumBoosting(updatedStrongLearner, reweightedDataSet, itersRemained - 1)
       }
     }
 
-    AdaBoostMHModel.apply[BM](numClasses, numFeatureDimensions,
-      accumBoosting(List(), distributedWeightedDataSet, numIterations))
+    accumBoosting(AdaBoostMHModel.apply[BM](numClasses, numFeatureDimensions,List()), distributedWeightedDataSet, numIterations)
   }
 }
 
