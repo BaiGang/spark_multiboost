@@ -97,7 +97,7 @@ class AdaBoostMHAlgorithm[BM <: BaseLearnerModel, BA <: BaseLearnerAlgorithm[BM]
 
     /**
      *
-     * @param accumBaseLearners List of base learners in preceding iterations
+     * @param accumStrongLearner The strong learner with base learners in preceding iterations
      * @param dataSet the example data set (with weights)
      * @param itersRemained num of iters remained
      * @return List of base learners from the current iteration and preceding ones
@@ -118,7 +118,7 @@ class AdaBoostMHAlgorithm[BM <: BaseLearnerModel, BA <: BaseLearnerAlgorithm[BM]
 
         // 1.1 update strong learner
         val updatedStrongLearner = AdaBoostMHModel.apply[BM](
-            numClasses, numFeatureDimensions, accumStrongLearner.baseLearners :+ baseLearner)
+          numClasses, numFeatureDimensions, accumStrongLearner.baseLearners :+ baseLearner)
 
         logInfo("Now getting the hypothesis...")
 
@@ -171,7 +171,7 @@ class AdaBoostMHAlgorithm[BM <: BaseLearnerModel, BA <: BaseLearnerAlgorithm[BM]
       }
     }
 
-    accumBoosting(AdaBoostMHModel.apply[BM](numClasses, numFeatureDimensions,List()), distributedWeightedDataSet, numIterations)
+    accumBoosting(AdaBoostMHModel.apply[BM](numClasses, numFeatureDimensions, List()), distributedWeightedDataSet, numIterations)
   }
 }
 

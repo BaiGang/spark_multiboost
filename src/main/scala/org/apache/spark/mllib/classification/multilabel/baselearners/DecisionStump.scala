@@ -57,18 +57,18 @@ class DecisionStumpModel(
     features map predict
   }
   override def toString = {
-    "DecisionStumpModel, alpha = " + alpha + ", " + " votes = " + votes + ", feature cut: " + cut
+    s"($alpha,$votes,$cut)"
   }
 }
 
 @Experimental
 class DecisionStumpAlgorithm(
-    _numClasses: Int,
-    _numFeatureDimensions: Int,
-    sampleRate: Double = 0.3,
-    featureRate: Double = 1.0)
-  extends BaseLearnerAlgorithm[DecisionStumpModel]
-  with Serializable with Logging {
+  _numClasses: Int,
+  _numFeatureDimensions: Int,
+  sampleRate: Double = 0.3,
+  featureRate: Double = 1.0)
+    extends BaseLearnerAlgorithm[DecisionStumpModel]
+    with Serializable with Logging {
 
   require(sampleRate > 0.0 && sampleRate <= 1.0,
     s"sampleRate $sampleRate is out of range.")
@@ -136,8 +136,8 @@ object DecisionStumpAlgorithm {
 
   /**
    * For each split, aggregate the edges from different data partitions.
-   * @param allSplitMetrics
-   * @return
+   * @param allSplitMetrics RDD of all split candidates and the corresponding metrics
+   * @return the summed metrics for each split candidate
    */
   def aggregateSplitMetrics(allSplitMetrics: RDD[SplitMetric]): RDD[SplitMetric] = {
 
