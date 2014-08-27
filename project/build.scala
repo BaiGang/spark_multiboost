@@ -46,7 +46,7 @@ object spark_multiboost extends Build {
     scalaSettings
 
   lazy val root = {
-    val settings = buildSettings ++ Seq(name := "spark_multiboost", version := "0.2") ++ SbtOneJar.oneJarSettings
+    val settings = buildSettings ++ Seq(name := "spark_multiboost", version := "0.2.1") ++ SbtOneJar.oneJarSettings
     Project(id = "spark_multiboost", base = file("."), settings = settings)
   }
 }
