@@ -15,19 +15,22 @@
  * limitations under the License.
  */
 
-package org.apache.spark.examples.mllib
+package com.sina.adtech.multiboost
 
-import java.io._
 import scopt.OptionParser
+import java.net.URI
+import org.apache.hadoop.conf.Configuration
+import org.apache.hadoop.fs.{ FileSystem, Path }
 import org.apache.spark.mllib.classification.multilabel.stronglearners.AdaBoostMHAlgorithm
 import org.apache.spark.mllib.classification.multilabel.stronglearners.AdaBoostMHModel
 import org.apache.spark.mllib.classification.multilabel.baselearners.DecisionStumpAlgorithm
 import org.apache.spark.mllib.classification.multilabel.baselearners.DecisionStumpModel
 import org.apache.spark.{ SparkContext, SparkConf }
 import org.apache.spark.rdd.RDD
+import org.apache.spark.Logging
 import org.apache.spark.mllib.classification.multilabel.{ WeightedMultiLabeledPoint, MultiLabeledPoint, MultiLabeledPointParser }
 
-object MultiBoost {
+object MultiBoost extends Logging {
 
   object StrongLearnerType extends Enumeration {
     type StrongLearnerType = Value
@@ -52,7 +55,7 @@ object MultiBoost {
   case class Params(
     trainingData: String = null,
     testingData: String = null,
-    model: String = null,
+    modelPath: String = null,
     numIters: Int = 20,
     numPartitions: Int = 4,
     sampleRate: Double = 1.0,
@@ -72,10 +75,10 @@ object MultiBoost {
         .text(s"paths to testing data in MultiLabeledPoint format.")
         .required()
         .action((x, c) => c.copy(testingData = x))
-      opt[String]("model")
+      opt[String]("model_path")
         .text(s"output path to persisted model.")
         .required()
-        .action((x, c) => c.copy(model = x))
+        .action((x, c) => c.copy(modelPath = x))
       opt[Double]("sample_rate")
         .text(s"rate of down-sampling the training dataset, trading accuracy for efficiency.")
         .action((x, c) => c.copy(sampleRate = x))
@@ -106,11 +109,11 @@ object MultiBoost {
         // Currently we only support AdaBoost.MH with Decision Stump as base learner.
         if (params.baseLearner != DecisionStump
           && params.strongLearner != AdaBoostMH) {
-          println(s"Currently we only support Adaboost.MH with DecisionStump.")
+          logError(s"Currently we only support Adaboost.MH with DecisionStump.")
           sys.exit(1)
         }
 
-        println(s"params: $params")
+        logInfo(s"params: $params")
 
         // execute the training
         run(params)
@@ -128,11 +131,11 @@ object MultiBoost {
     val testingData = sc.textFile(params.testingData, params.numPartitions)
       .map(MultiLabeledPointParser.parse)
 
-    println(s"Num of training samples: ${trainingData.count()}\n" +
+    logInfo(s"Num of training samples: ${trainingData.count()}\n" +
       s"Num of testing samples: ${testingData.count()}")
 
     val sample1 = testingData.take(1)(0)
-    println(s"Sample1: $sample1")
+    logInfo(s"Sample1: $sample1")
     val numClasses = sample1.labels.size
     val numFeatureDimensions = sample1.features.size
 
@@ -144,22 +147,13 @@ object MultiBoost {
       numFeatureDimensions,
       params.numIters)
 
-    println("Start training...")
+    // training
     val model = strongLearnerAlgo.run(trainingData)
-    println("Training done.")
 
-    println(s"Writing the model to ${params.model}...")
-    val writer = new PrintWriter(new File(params.model))
-    writer.write(model.toString)
-    writer.close()
-    println("Writing done.")
-
-    println("Start testing...")
     val predicts = testingData.map {
       case s: MultiLabeledPoint =>
         model predict s.features
     }.cache()
-    println("Testing done.")
 
     val predictsAndLabels = (predicts zip testingData map {
       case (p, d) => (p.toArray, d.labels.toArray)
@@ -172,14 +166,22 @@ object MultiBoost {
     val recall = computeRecall(predictsAndLabels)
     val f1Score = computeF1Score(precision, recall)
 
-    println(s"Num of training samples: ${trainingData.count}\n"
-      + s"Num of testing samples: ${testingData.count}\n"
-      + s"Testing hamming loss is: $hammingLoss\n"
-      + s"Testing accuracy is: $accuracy\n"
-      + s"Testing strict accuracy is: $strictAccuracy\n"
-      + s"Testing precision is: $precision\n"
-      + s"Testing recall is: $recall\n"
-      + s"F1 score is: $f1Score")
+    var resultStr = s"$model\n\n"
+    resultStr += s"Num of training samples: ${trainingData.count}\n"
+    resultStr += s"Num of testing samples: ${testingData.count}\n"
+    resultStr += s"Testing hamming loss is: $hammingLoss\n"
+    resultStr += s"Testing accuracy is: $accuracy\n"
+    resultStr += s"Testing strict accuracy is: $strictAccuracy\n"
+    resultStr += s"Testing precision is: $precision\n"
+    resultStr += s"Testing recall is: $recall\n"
+    resultStr += s"F1 score is: $f1Score\n"
+
+    val hadoopConf = new Configuration()
+    val fs = FileSystem.get(URI.create(params.modelPath), hadoopConf)
+    var dst = new Path(params.modelPath + "/model.txt")
+    val out = fs.create(dst)
+    out.write(resultStr.getBytes("UTF-8"))
+
     sc.stop()
   }
 
