@@ -106,7 +106,7 @@ object DecisionStumpAlgorithm {
   private[DecisionStumpAlgorithm] case class SplitMetric(featureCut: FeatureCut, edges: Vector)
 
   def getLocalSplitMetrics(featureSet: Iterator[Int])(
-    dataSet: Array[WeightedMultiLabeledPoint]): Array[SplitMetric] = {
+    dataSet: Array[WeightedMultiLabeledPoint]): Iterator[SplitMetric] = {
 
     val numClasses = dataSet(1).data.labels.size
     // 1. initial edge
@@ -131,7 +131,7 @@ object DecisionStumpAlgorithm {
             metrics += SplitMetric(FeatureCut(featureIndex, wmlp.data.features(featureIndex)), updatedEdge)
           }
         }
-    }.toArray
+    }
   }
 
   /**
