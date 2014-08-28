@@ -159,7 +159,7 @@ object DecisionStumpAlgorithm {
 
     val (model, _) = splitMetrics.aggregate(
       (new DecisionStumpModel(1.0, Vectors.dense(1.0), new FeatureCut(1, 0.5)), 1e20))({ (result, item) =>
-        val fullEdge = item.edges.toArray.reduce(_ + _)
+        val fullEdge = item.edges.toArray.reduce(math.abs(_) + math.abs(_))
         val alpha = getAlpha(fullEdge)
         val votes = Vectors.dense((for (e <- item.edges.toArray) yield if (e > 0.0) 1.0 else -1.0).toArray)
         val loss = getExpLoss(alpha, fullEdge)
