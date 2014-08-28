@@ -158,7 +158,7 @@ class AdaBoostMHAlgorithm[BM <: BaseLearnerModel, BA <: BaseLearnerAlgorithm[BM]
                 val updatedWeights = for (i <- 0 until numClasses)
                   yield wmlp.weights(i) * math.exp(-predict(i) * wmlp.data.labels(i)) / summedZ
                 WeightedMultiLabeledPoint(
-                  Vectors.dense(values = updatedWeights.toArray),
+                  Vectors.dense(updatedWeights.toArray),
                   wmlp.data
                 )
             }
@@ -171,7 +171,8 @@ class AdaBoostMHAlgorithm[BM <: BaseLearnerModel, BA <: BaseLearnerAlgorithm[BM]
       }
     }
 
-    accumBoosting(AdaBoostMHModel.apply[BM](numClasses, numFeatureDimensions, List()), distributedWeightedDataSet, numIterations)
+    accumBoosting(AdaBoostMHModel.apply[BM](numClasses, numFeatureDimensions, List()),
+        distributedWeightedDataSet, numIterations)
   }
 }
 
