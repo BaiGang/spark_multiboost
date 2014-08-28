@@ -122,11 +122,11 @@ class AdaBoostMHAlgorithm[BM <: BaseLearnerModel, BA <: BaseLearnerAlgorithm[BM]
 
         logInfo("Now getting the hypothesis...")
 
-        // 2. get the hypothesis
+        // 2. get the weak hypothesis
         val predictsAndPoints = dataSet map {
           case iterable =>
             iterable map { wmlPoint =>
-              (updatedStrongLearner.predict(wmlPoint.data.features),
+              (baseLearner.predict(wmlPoint.data.features),
                 wmlPoint)
             }
         }
