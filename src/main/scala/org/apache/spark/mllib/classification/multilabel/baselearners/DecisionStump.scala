@@ -117,7 +117,7 @@ object DecisionStumpAlgorithm {
     featureSet.flatMap { featureIndex =>
       // 2. fold to calculate split metrics on each split value
       dataSet.sortBy(_.data.features(featureIndex)).foldLeft(
-        new ArrayBuffer[SplitMetric]() += SplitMetric(FeatureCut(-1, -1e20), Vectors.dense(initialEdge))
+        new ArrayBuffer[SplitMetric]() += SplitMetric(FeatureCut(0, -1e20), Vectors.dense(initialEdge))
       ) { (metrics, wmlp) =>
           val updatedEdge = Vectors.dense((for (i <- 0 until wmlp.weights.size)
             yield metrics.last.edges(i) - 2.0 * wmlp.weights(i) * wmlp.data.labels(i)).toArray)
