@@ -96,83 +96,68 @@ class AdaBoostMHAlgorithm[BM <: BaseLearnerModel, BA <: BaseLearnerAlgorithm[BM]
       .map(_._2.toArray)
 
     /**
-     *
-     * @param accumStrongLearner The strong learner with base learners in preceding iterations
-     * @param dataSet the example data set (with weights)
-     * @param itersRemained num of iters remained
-     * @return List of base learners from the current iteration and preceding ones
+     * The
+     * @param model
+     * @param dataSet
      */
-    def accumBoosting(
-      accumStrongLearner: AdaBoostMHModel[BM],
-      dataSet: RDD[DataSet],
-      itersRemained: Int): AdaBoostMHModel[BM] = {
-      if (itersRemained == 0) {
-        logInfo("Finished all iterations!")
-        accumStrongLearner
-      } else {
+    case class IterationData(model: AdaBoostMHModel[BM], dataSet: RDD[DataSet])
 
-        logInfo(s"$itersRemained iterations remaied. Now training a new base learner...")
+    val finalIterationData = (1 to numIterations).foldLeft(IterationData(
+      AdaBoostMHModel.apply[BM](numClasses, numFeatureDimensions, List()),
+      distributedWeightedDataSet)) { (iterData: IterationData, iter: Int) =>
 
-        // 1. train a new base learner
-        val baseLearner = baseLearnerAlgo.run(dataSet, 11367L + 3 * itersRemained)
+      logInfo(s"Start $iter-th iteration.")
 
-        // 1.1 update strong learner
-        val updatedStrongLearner = AdaBoostMHModel.apply[BM](
-          numClasses, numFeatureDimensions, accumStrongLearner.baseLearners :+ baseLearner)
+      // 1. train a new base learner
+      val baseLearner = baseLearnerAlgo.run(iterData.dataSet, 11367L + 3 * iter)
 
-        logInfo("Now getting the hypothesis...")
+      // 1.1 update strong learner
+      val updatedStrongLearner = AdaBoostMHModel.apply[BM](
+        numClasses, numFeatureDimensions, iterData.model.baseLearners :+ baseLearner)
 
-        // 2. get the weak hypothesis
-        val predictsAndPoints = dataSet map {
-          case iterable =>
-            iterable map { wmlPoint =>
-              (baseLearner.predict(wmlPoint.data.features),
-                wmlPoint)
-            }
+      // 2. get the weak hypothesis
+      val predictsAndPoints = iterData.dataSet map { iterable =>
+        iterable map { wmlPoint =>
+          (baseLearner.predict(wmlPoint.data.features),
+            wmlPoint)
         }
-
-        dataSet.unpersist()
-
-        logInfo("Now do re-weighting...")
-
-        // 3. sum up the normalize factor
-        val summedZ = predictsAndPoints.aggregate(0.0)({
-          // seqOp
-          case (sum: Double, array: Array[(Vector, WeightedMultiLabeledPoint)]) =>
-            array.foldLeft(0.0) {
-              case (sum1: Double, (predict: Vector, wmlp: WeightedMultiLabeledPoint)) =>
-                (predict.toArray zip wmlp.data.labels.toArray zip wmlp.weights.toArray).map {
-                  case ((p, l), w) => w * math.exp(-p * l)
-                }.sum + sum1
-            } + sum
-        }, {
-          // combOp
-          _ + _
-        })
-
-        // 4. re-weight the data set
-        val reweightedDataSet = predictsAndPoints map {
-          case iterable =>
-            iterable map {
-              case (predict: Vector, wmlp: WeightedMultiLabeledPoint) =>
-                val updatedWeights = for (i <- 0 until numClasses)
-                  yield wmlp.weights(i) * math.exp(-predict(i) * wmlp.data.labels(i)) / summedZ
-                WeightedMultiLabeledPoint(
-                  Vectors.dense(updatedWeights.toArray),
-                  wmlp.data
-                )
-            }
-        }
-
-        logInfo("Starting next iteration...")
-
-        // 5. next recursion
-        accumBoosting(updatedStrongLearner, reweightedDataSet, itersRemained - 1)
       }
-    }
 
-    accumBoosting(AdaBoostMHModel.apply[BM](numClasses, numFeatureDimensions, List()),
-        distributedWeightedDataSet, numIterations)
+      logInfo("Now do re-weighting...")
+
+      // 3. sum up the normalize factor
+      val summedZ = predictsAndPoints.aggregate(0.0)({
+        // seqOp
+        case (sum: Double, array: Array[(Vector, WeightedMultiLabeledPoint)]) =>
+          array.foldLeft(0.0) {
+            case (sum1: Double, (predict: Vector, wmlp: WeightedMultiLabeledPoint)) =>
+              (predict.toArray zip wmlp.data.labels.toArray zip wmlp.weights.toArray).map {
+                case ((p, l), w) => w * math.exp(-p * l)
+              }.sum + sum1
+          } + sum
+      }, {
+        // combOp
+        _ + _
+      })
+
+      // 4. re-weight the data set
+      val reweightedDataSet = predictsAndPoints map {
+        case iterable =>
+          iterable map {
+            case (predict: Vector, wmlp: WeightedMultiLabeledPoint) =>
+              val updatedWeights = for (i <- 0 until numClasses)
+                yield wmlp.weights(i) * math.exp(-predict(i) * wmlp.data.labels(i)) / summedZ
+              WeightedMultiLabeledPoint(
+                Vectors.dense(updatedWeights.toArray),
+                wmlp.data
+              )
+          }
+      }
+
+      // 5. next recursion
+      IterationData(updatedStrongLearner, reweightedDataSet)
+    }
+    finalIterationData.model
   }
 }
 
