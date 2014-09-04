@@ -22,13 +22,12 @@ import java.net.URI
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.{ FileSystem, Path }
 import org.apache.spark.mllib.classification.multilabel.stronglearners.AdaBoostMHAlgorithm
-import org.apache.spark.mllib.classification.multilabel.stronglearners.AdaBoostMHModel
 import org.apache.spark.mllib.classification.multilabel.baselearners.DecisionStumpAlgorithm
 import org.apache.spark.mllib.classification.multilabel.baselearners.DecisionStumpModel
 import org.apache.spark.{ SparkContext, SparkConf }
 import org.apache.spark.rdd.RDD
 import org.apache.spark.Logging
-import org.apache.spark.mllib.classification.multilabel.{ WeightedMultiLabeledPoint, MultiLabeledPoint, MultiLabeledPointParser }
+import org.apache.spark.mllib.classification.multilabel.{ MultiLabeledPoint, MultiLabeledPointParser }
 
 object MultiBoost extends Logging {
 
@@ -124,6 +123,10 @@ object MultiBoost extends Logging {
 
   def run(params: Params) {
     val conf = new SparkConf().setAppName(params.jobDescription)
+    conf.set("spark.storage.memoryFraction", "0.5")
+    conf.set("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
+    conf.set("spark.kryo.registrator", "com.sina.adtech.multiboost.KryoRegistrator")
+
     val sc = new SparkContext(conf)
     val trainingData = sc.textFile(params.trainingData, params.numPartitions)
       .map(MultiLabeledPointParser.parse)
