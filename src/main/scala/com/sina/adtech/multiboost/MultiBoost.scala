@@ -232,10 +232,10 @@ object MultiBoost extends Logging {
   def computeStrictAccuracy(predictsAndLabels: RDD[(Array[Double], Array[Double])]): Double = {
     predictsAndLabels.filter {
       case (predicts, labels) =>
-        (predicts zip labels).filter {
+        (predicts zip labels).count {
           case (p, l) =>
             p * l > 0.0
-        }.size == predicts.size
+        } == predicts.size
     }.count().toDouble / predictsAndLabels.count().toDouble
   }
 
