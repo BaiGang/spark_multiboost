@@ -142,9 +142,12 @@ object DecisionStumpAlgorithm {
   def aggregateSplitMetrics(allSplitMetrics: RDD[SplitMetric]): RDD[SplitMetric] = {
 
     // votes are combined as sigma(v * edge)/sigma(edge)
-    allSplitMetrics.map(m => (m.hashCode, m)).reduceByKey { (metric1, metric2) =>
+    allSplitMetrics.map {
+      case metric: SplitMetric =>
+        (metric.featureCut.hashCode, metric)
+    }.reduceByKey { (metric1, metric2) =>
       SplitMetric(metric1.featureCut, Vectors.fromBreeze(metric1.edges.toBreeze + metric2.edges.toBreeze))
-    } map {
+    }.map {
       case (hash: Int, metric: SplitMetric) =>
         metric
     }
