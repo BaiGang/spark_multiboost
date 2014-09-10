@@ -39,6 +39,8 @@ class AdaBoostMHModel[BM <: MultiLabelClassificationModel](
   baseLearnersList: List[BM])
     extends StrongLearnerModel[BM] {
 
+  var debugString: String = ""
+
   def this() = this(0, 0, List())
 
   override def baseLearners = baseLearnersList
@@ -50,10 +52,9 @@ class AdaBoostMHModel[BM <: MultiLabelClassificationModel](
   override def predict(testData: Vector): Vector = {
 
     val rawPredicts: Vector = baseLearners.foldLeft(
-      Vectors.dense(Array.fill[Double](numClasses)(0.0))) {
-        (sum, item) =>
-          val predicts = item predict testData
-          Vectors.fromBreeze(sum.toBreeze + predicts.toBreeze)
+      Vectors.dense(Array.fill[Double](numClasses)(0.0))) { (sum, item) =>
+        val predicts = item predict testData
+        Vectors.fromBreeze(sum.toBreeze + predicts.toBreeze)
       }
 
     val predictArray: Array[Double] = rawPredicts.toArray.map {
@@ -96,9 +97,9 @@ class AdaBoostMHAlgorithm[BM <: BaseLearnerModel, BA <: BaseLearnerAlgorithm[BM]
       .map(_._2.toArray)
 
     /**
-     * The
-     * @param model
-     * @param dataSet
+     * The encapsulation of the iteration data which consists of:
+     * @param model the resulted model, a strong learner, of previous iterations.
+     * @param dataSet the re-weighted multilabeled data points.
      */
     case class IterationData(model: AdaBoostMHModel[BM], dataSet: RDD[DataSet])
 
@@ -118,12 +119,9 @@ class AdaBoostMHAlgorithm[BM <: BaseLearnerModel, BA <: BaseLearnerAlgorithm[BM]
       // 2. get the weak hypothesis
       val predictsAndPoints = iterData.dataSet map { iterable =>
         iterable map { wmlPoint =>
-          (baseLearner.predict(wmlPoint.data.features),
-            wmlPoint)
+          (baseLearner.predict(wmlPoint.data.features), wmlPoint)
         }
       }
-
-      logInfo("Now do re-weighting...")
 
       // 3. sum up the normalize factor
       val summedZ = predictsAndPoints.aggregate(0.0)({
@@ -135,10 +133,10 @@ class AdaBoostMHAlgorithm[BM <: BaseLearnerModel, BA <: BaseLearnerAlgorithm[BM]
                 case ((p, l), w) => w * math.exp(-p * l)
               }.sum + sum1
           } + sum
-      }, {
-        // combOp
-        _ + _
-      })
+      }, { _ + _ })
+
+      logInfo(s"Weights normalization factor (Z) value: $summedZ")
+      updatedStrongLearner.debugString = iterData.model.debugString + s"\nZ=$summedZ"
 
       // 4. re-weight the data set
       val reweightedDataSet = predictsAndPoints map {
@@ -148,9 +146,7 @@ class AdaBoostMHAlgorithm[BM <: BaseLearnerModel, BA <: BaseLearnerAlgorithm[BM]
               val updatedWeights = for (i <- 0 until numClasses)
                 yield wmlp.weights(i) * math.exp(-predict(i) * wmlp.data.labels(i)) / summedZ
               WeightedMultiLabeledPoint(
-                Vectors.dense(updatedWeights.toArray),
-                wmlp.data
-              )
+                Vectors.dense(updatedWeights.toArray), wmlp.data)
           }
       }
 
