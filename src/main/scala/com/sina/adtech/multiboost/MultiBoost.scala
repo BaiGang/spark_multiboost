@@ -170,8 +170,8 @@ object MultiBoost extends Logging {
 
     var resultStr = s"$model\n\n"
     resultStr += s"${model.debugString}\n\n"
-    resultStr += s"Num of training samples: ${trainingData.count}\n"
-    resultStr += s"Num of testing samples: ${testingData.count}\n"
+    resultStr += s"Num of training samples: ${trainingData.count()}\n"
+    resultStr += s"Num of testing samples: ${testingData.count()}\n"
     resultStr += s"Testing hamming loss is: $hammingLoss\n"
     resultStr += s"Testing accuracy is: $accuracy\n"
     resultStr += s"Testing strict accuracy is: $strictAccuracy\n"

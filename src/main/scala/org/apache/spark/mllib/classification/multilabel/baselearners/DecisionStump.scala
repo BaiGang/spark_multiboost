@@ -147,10 +147,7 @@ object DecisionStumpAlgorithm {
         (metric.featureCut.hashCode, metric)
     }.reduceByKey { (metric1, metric2) =>
       SplitMetric(metric1.featureCut, Vectors.fromBreeze(metric1.edges.toBreeze + metric2.edges.toBreeze))
-    }.map {
-      case (hash: Int, metric: SplitMetric) =>
-        metric
-    }
+    }.map { case (hash: Int, metric: SplitMetric) => metric }
   }
 
   /**
@@ -166,10 +163,7 @@ object DecisionStumpAlgorithm {
         val alpha = getAlpha(fullEdge)
         val votes = Vectors.dense((for (e <- item.edges.toArray) yield if (e > 0.0) 1.0 else -1.0).toArray)
         val loss = getExpLoss(alpha, fullEdge)
-        if (loss < result._2)
-          (new DecisionStumpModel(alpha, votes, item.featureCut), loss)
-        else
-          result
+        if (loss < result._2) (new DecisionStumpModel(alpha, votes, item.featureCut), loss) else result
       }, { (result1, result2) =>
         // comOp, choose the one with smaller loss
         if (result1._2 < result2._2)
