@@ -93,7 +93,7 @@ class AdaBoostMHAlgorithm[BM <: BaseLearnerModel, BA <: BaseLearnerAlgorithm[BM]
     val weightedDataSet = AdaBoostMHAlgorithm.initWeights(numClasses, dataSet)
 
     val distributedWeightedDataSet = weightedDataSet
-      .groupBy(_.hashCode() % weightedDataSet.partitions.length)
+      .groupBy(_.hashCode() % (weightedDataSet.partitions.length * 128))
       .map(_._2.toArray)
 
     /**
@@ -169,11 +169,10 @@ object AdaBoostMHAlgorithm {
   def initWeights(
     numClasses: Int,
     dataSet: RDD[MultiLabeledPoint]): RDD[WeightedMultiLabeledPoint] = {
-    val w = 1.0 / (dataSet.count.toDouble * numClasses)
+    val w = 1.0 / (dataSet.count().toDouble * numClasses)
     val initialWeight = Vectors.dense(
       Array.fill[Double](numClasses)(w))
-    dataSet map {
-      case mlPoint: MultiLabeledPoint =>
+    dataSet map { case mlPoint: MultiLabeledPoint =>
         WeightedMultiLabeledPoint(initialWeight, mlPoint)
     }
   }
