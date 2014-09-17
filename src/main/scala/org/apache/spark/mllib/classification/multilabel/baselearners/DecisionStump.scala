@@ -45,7 +45,7 @@ case class FeatureCut(
 }
 
 @Experimental
-class DecisionStumpModel(
+case class DecisionStumpModel(
     alpha: Double,
     votes: Vector,
     cut: Option[FeatureCut]) extends BaseLearnerModel {
@@ -128,7 +128,7 @@ object DecisionStumpAlgorithm {
             yield lastMetric.edges(i) - 2.0 * wmlp.weights(i) * wmlp.data.labels(i)).toArray)
 
           lastMetric.featureCut match {
-            case Some(cut) if cut.decisionThreshold == wmlp.data.features(featureIndex) =>
+            case Some(cut) if math.abs(cut.decisionThreshold - wmlp.data.features(featureIndex)) < 1e-6 =>
               // update the edge, do not insert new split but update the last one
               val updatedMetric = SplitMetric(lastMetric.featureCut, updatedEdge)
               metrics.dropRight(1) += updatedMetric
@@ -169,7 +169,7 @@ object DecisionStumpAlgorithm {
         val alpha = getAlpha(fullEdge)
         val votes = Vectors.dense((for (e <- item.edges.toArray) yield if (e > 0.0) 1.0 else -1.0).toArray)
         val loss = getExpLoss(alpha, fullEdge)
-        if (loss < result._2) (new DecisionStumpModel(alpha, votes, item.featureCut), loss) else result
+        if (loss < result._2) (DecisionStumpModel(alpha, votes, item.featureCut), loss) else result
       }, { (result1, result2) =>
         // comOp, choose the one with smaller loss
         if (result1._2 < result2._2) result1 else result2

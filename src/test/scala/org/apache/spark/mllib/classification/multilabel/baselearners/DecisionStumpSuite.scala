@@ -18,11 +18,14 @@
 package org.apache.spark.mllib.classification.multilabel.baselearners
 
 import org.scalatest.FunSuite
+import org.apache.spark.SparkContext._
 import org.apache.spark.mllib.util.LocalSparkContext
 import org.apache.spark.mllib.classification.multilabel.MultiLabeledPointParser
 import org.apache.spark.mllib.classification.multilabel.WeightedMultiLabeledPoint
 import org.apache.spark.mllib.classification.multilabel.MultiLabeledPoint
 import org.apache.spark.mllib.linalg.Vectors
+import org.apache.spark.rdd.RDD
+import org.apache.spark.rdd.PairRDDFunctions
 
 class DecisionStumpSuite extends FunSuite with LocalSparkContext {
 
@@ -54,68 +57,29 @@ class DecisionStumpSuite extends FunSuite with LocalSparkContext {
     assert(featureCut.cut(weightedMultiLabelPoint) === -1.0)
   }
 
-  test("Find best split threshold on a given feature.") {
+  test("Calulate split metrics and generate the model.") {
 
-    val featLabelWeightTriplets = dataSet.map { wmlp =>
-      (wmlp.data.features(1),
-        wmlp.data.labels,
-        wmlp.weights)
-    }
-    val (votes, threshold, edge) = DecisionStumpAlgorithm.findBestStumpOnFeature(
-      featLabelWeightTriplets, Vectors.dense(0.0, -0.125))
+    // To get split metrics on features 0, 1 and 2.
+    val getSplitFunc = DecisionStumpAlgorithm.getLocalSplitMetrics(Iterator(0, 1, 2)) _
 
-    // In dataSet, there is an obvious gap in feature 1. So threshold is optimally 0.7.
-    // The weighted per-class error rate is:
-    //  mu_1_minus = 0.0625 * 7
-    //  mu_2_minus = 0.0625 * 0
-    // The weighted per-class correct classification rate is:
-    //  mu_1_plus = 0.0625 * 1
-    //  mu_2_plus = 0.0625 * 8
-    // So vote_1 is -1 because mu_1_minus > mu_1_plus,
-    // and vote_2 is 1 because mu_2_minus < mu_2_plus.
-    // As for the edge:
-    //  1. The initial edge is:
-    //    edge_1^0 = 0.0625 * (4 - 4) = 0.0
-    //    edge_2^0 = 0.0625 * (3 - 5) = -0.125
-    //  2. class-wise edges for each sample is:
-    //    0. (0.0, -0.125)
-    //    1. (-0.125, 0.0)
-    //    2. (-0.25, 0.125)
-    //    3. (-0.125, 0.25)
-    //    4. (-0.25, 0.375)
-    //    5. (-0.375, 0.5)  * best stump
-    //    6. (-0.25, 0.375)
-    //    7. (-0.125, 0.25)
-    //    8. (0.0, 0.125)
-    //  3. best edge for each sample is:
-    //    (-0.375, 0.5)
-    //
-    assert(votes === Vectors.dense(-1.0, 1.0))
-    assert(threshold === 0.7)
-    assert(edge === Vectors.dense(-0.375, 0.5))
+    val allSplitMetrics = dataSet.map((0, _))
+      .groupByKey()
+      .map(_._2.toArray)
+      .flatMap(getSplitFunc)
+
+    assert(allSplitMetrics.count() === 16 + 3)
+
+    val aggregatedSplitMetrics = DecisionStumpAlgorithm aggregateSplitMetrics allSplitMetrics
+
+    assert(aggregatedSplitMetrics.count === 16 + 1)
+
+    val model: DecisionStumpModel = DecisionStumpAlgorithm findBestSplitMetrics aggregatedSplitMetrics
+
+    // From the dataset, we see that the best DecisionStumpModel should be FeatureCut(1,0.6) with
+    // votes [-1, 1], which has only one classification error on the dataset.
+    assert(model.votes === Vectors.dense(-1.0, 1.0))
+    assert(model.cut === Some(FeatureCut(1, 0.6)))
   }
 
-  test("Test training a very basic decision stump model.") {
-    val decisionStumpAlgo = new DecisionStumpAlgorithm(2, 3, 1.0)
-    val decisionStumpModel: DecisionStumpModel = decisionStumpAlgo.run(dataSet)
-
-    // TODO: use multi-label metrics in PR https://github.com/apache/spark/pull/1270
-    // Here we just use a very simple miss-prediction count for metrics.
-
-    val predicts = dataSet.flatMap {
-      case wmlPoint: WeightedMultiLabeledPoint =>
-        (decisionStumpModel predict wmlPoint.data.features).toArray
-    }.collect
-    val labels = dataSet.flatMap {
-      case wmlPoint: WeightedMultiLabeledPoint =>
-        wmlPoint.data.labels.toArray
-    }.collect
-
-    val missPredictCount = (predicts zip labels).map(
-      zip => if (zip._1 * zip._2 < 0.0) 1.0 else 0.0)
-      .reduce(_ + _)
-
-    assert(missPredictCount / labels.length < 0.125)
-  }
 }
 
