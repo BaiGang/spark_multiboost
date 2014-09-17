@@ -22,7 +22,6 @@ import org.apache.spark.mllib.linalg.{ Vectors, Vector }
 import org.apache.spark.SparkContext._
 import org.apache.spark.annotation.Experimental
 import org.apache.spark.rdd.RDD
-import org.apache.spark.rdd.PairRDDFunctions
 
 import org.apache.spark.Logging
 import org.apache.spark.util.random.BernoulliSampler
@@ -49,9 +48,14 @@ case class FeatureCut(
 class DecisionStumpModel(
     alpha: Double,
     votes: Vector,
-    cut: FeatureCut) extends BaseLearnerModel {
+    cut: Option[FeatureCut]) extends BaseLearnerModel {
   override def predict(features: Vector): Vector = {
-    Vectors.fromBreeze(votes.toBreeze * alpha * cut.cut(features))
+    Vectors.fromBreeze(votes.toBreeze * alpha * {
+      cut match {
+        case Some(featureCut) => featureCut.cut(features)
+        case None => 1.0
+      }
+    })
   }
   override def predict(features: RDD[Vector]): RDD[Vector] = {
     features map predict
@@ -103,7 +107,7 @@ object DecisionStumpAlgorithm {
    * @param featureCut the feature and the split value of the stump
    * @param edges the vector of class-wise edges of the stump
    */
-  case class SplitMetric(featureCut: FeatureCut, edges: Vector)
+  case class SplitMetric(featureCut: Option[FeatureCut], edges: Vector)
 
   def getLocalSplitMetrics(featureSet: Iterator[Int])(
     dataSet: Array[WeightedMultiLabeledPoint]): Iterator[SplitMetric] = {
@@ -117,18 +121,20 @@ object DecisionStumpAlgorithm {
     featureSet.flatMap { featureIndex =>
       // 2. fold to calculate split metrics on each split value
       dataSet.sortBy(_.data.features(featureIndex)).foldLeft(
-        new ArrayBuffer[SplitMetric]() += SplitMetric(FeatureCut(0, -1e20), Vectors.dense(initialEdge))
+        new ArrayBuffer[SplitMetric]() += SplitMetric(None, Vectors.dense(initialEdge))
       ) { (metrics, wmlp) =>
+          val lastMetric = metrics.last
           val updatedEdge = Vectors.dense((for (i <- 0 until wmlp.weights.size)
-            yield metrics.last.edges(i) - 2.0 * wmlp.weights(i) * wmlp.data.labels(i)).toArray)
+            yield lastMetric.edges(i) - 2.0 * wmlp.weights(i) * wmlp.data.labels(i)).toArray)
 
-          if (metrics.last.featureCut.decisionThreshold == wmlp.data.features(featureIndex)) {
-            // update the edge, do not insert new split but update the last one
-            val updatedMetric = SplitMetric(metrics.last.featureCut, updatedEdge)
-            metrics.dropRight(1) += updatedMetric
-          } else {
-            // insert a new split
-            metrics += SplitMetric(FeatureCut(featureIndex, wmlp.data.features(featureIndex)), updatedEdge)
+          lastMetric.featureCut match {
+            case Some(cut) if cut.decisionThreshold == wmlp.data.features(featureIndex) =>
+              // update the edge, do not insert new split but update the last one
+              val updatedMetric = SplitMetric(lastMetric.featureCut, updatedEdge)
+              metrics.dropRight(1) += updatedMetric
+            case _ =>
+              // insert a new split candidate
+              metrics += SplitMetric(Some(FeatureCut(featureIndex, wmlp.data.features(featureIndex))), updatedEdge)
           }
         }
     }
@@ -158,7 +164,7 @@ object DecisionStumpAlgorithm {
   def findBestSplitMetrics(splitMetrics: RDD[SplitMetric]): DecisionStumpModel = {
 
     val (model, _) = splitMetrics.aggregate(
-      (new DecisionStumpModel(1.0, Vectors.dense(1.0), new FeatureCut(1, 0.5)), 1e20))({ (result, item) =>
+      (new DecisionStumpModel(1.0, Vectors.dense(1.0), None), 1e20))({ (result, item) =>
         val fullEdge = item.edges.toArray.reduce(math.abs(_) + math.abs(_))
         val alpha = getAlpha(fullEdge)
         val votes = Vectors.dense((for (e <- item.edges.toArray) yield if (e > 0.0) 1.0 else -1.0).toArray)
@@ -166,10 +172,7 @@ object DecisionStumpAlgorithm {
         if (loss < result._2) (new DecisionStumpModel(alpha, votes, item.featureCut), loss) else result
       }, { (result1, result2) =>
         // comOp, choose the one with smaller loss
-        if (result1._2 < result2._2)
-          result1
-        else
-          result2
+        if (result1._2 < result2._2) result1 else result2
       })
     model
   }
