@@ -19,13 +19,8 @@ package org.apache.spark.mllib.classification.multilabel.baselearners
 
 import org.scalatest.FunSuite
 import org.apache.spark.SparkContext._
-import org.apache.spark.mllib.util.LocalSparkContext
-import org.apache.spark.mllib.classification.multilabel.MultiLabeledPointParser
-import org.apache.spark.mllib.classification.multilabel.WeightedMultiLabeledPoint
-import org.apache.spark.mllib.classification.multilabel.MultiLabeledPoint
+import org.apache.spark.mllib.util.{ WeightedMultiLabeledPoint, MultiLabeledPoint, LocalSparkContext, MultiLabeledPointParser }
 import org.apache.spark.mllib.linalg.Vectors
-import org.apache.spark.rdd.RDD
-import org.apache.spark.rdd.PairRDDFunctions
 
 class DecisionStumpSuite extends FunSuite with LocalSparkContext {
 

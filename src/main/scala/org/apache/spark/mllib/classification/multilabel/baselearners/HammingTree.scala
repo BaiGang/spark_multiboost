@@ -18,8 +18,8 @@
 package org.apache.spark.mllib.classification.multilabel.baselearners
 
 import org.apache.spark.mllib.linalg.{ Vector, Vectors }
+import org.apache.spark.mllib.util.WeightedMultiLabeledPoint
 import org.apache.spark.rdd.RDD
-import org.apache.spark.mllib.classification.multilabel.WeightedMultiLabeledPoint
 
 /**
  * The Hamming tree model.

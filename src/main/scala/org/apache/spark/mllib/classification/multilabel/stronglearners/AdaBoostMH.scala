@@ -17,9 +17,11 @@
 
 package org.apache.spark.mllib.classification.multilabel.stronglearners
 
+import org.apache.spark.mllib.util.{ MultiLabeledPoint, WeightedMultiLabeledPoint }
+
 import scala.language.higherKinds
 import org.apache.spark.SparkContext._
-import org.apache.spark.mllib.classification.multilabel.{ MultiLabelClassificationAlgorithm, MultiLabelClassificationModel, MultiLabeledPoint, WeightedMultiLabeledPoint }
+import org.apache.spark.mllib.classification.multilabel.MultiLabelClassificationModel
 import org.apache.spark.rdd.RDD
 import org.apache.spark.mllib.linalg.{ Vectors, Vector }
 import org.apache.spark.annotation.Experimental
@@ -58,8 +60,7 @@ class AdaBoostMHModel[BM <: MultiLabelClassificationModel](
       }
 
     val predictArray: Array[Double] = rawPredicts.toArray.map {
-      case p: Double =>
-        if (p >= 0.0) 1.0 else -1.0
+      case p: Double => if (p >= 0.0) 1.0 else -1.0
     }
     Vectors.dense(predictArray)
   }
@@ -93,7 +94,7 @@ class AdaBoostMHAlgorithm[BM <: BaseLearnerModel, BA <: BaseLearnerAlgorithm[BM]
     val weightedDataSet = AdaBoostMHAlgorithm.initWeights(numClasses, dataSet)
 
     val distributedWeightedDataSet = weightedDataSet
-      .groupBy(_.hashCode() % (weightedDataSet.partitions.length * 128))
+      .groupBy(_.hashCode() % (weightedDataSet.partitions.length * 2))
       .map(_._2.toArray)
 
     /**
@@ -172,7 +173,8 @@ object AdaBoostMHAlgorithm {
     val w = 1.0 / (dataSet.count().toDouble * numClasses)
     val initialWeight = Vectors.dense(
       Array.fill[Double](numClasses)(w))
-    dataSet map { case mlPoint: MultiLabeledPoint =>
+    dataSet map {
+      case mlPoint: MultiLabeledPoint =>
         WeightedMultiLabeledPoint(initialWeight, mlPoint)
     }
   }

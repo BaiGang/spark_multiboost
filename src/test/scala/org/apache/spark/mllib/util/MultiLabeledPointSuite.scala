@@ -36,8 +36,7 @@ class MultiLabeledPointSuite extends FunSuite {
         Vectors.sparse(2, Array(1), Array(1.0))),
       MultiLabeledPoint(
         Vectors.sparse(2, Array(1), Array(-1.0)),
-        Vectors.dense(1.0, 0.0, 1.0)))
-      .foreach(p =>
-        assert(p === MultiLabeledPointParser.parse(p.toString)))
+        Vectors.dense(1.0, 0.0, 1.0))
+    ).foreach(p => assert(p === MultiLabeledPointParser.parse(p.toString)))
   }
 }

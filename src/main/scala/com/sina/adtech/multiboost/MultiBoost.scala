@@ -17,6 +17,7 @@
 
 package com.sina.adtech.multiboost
 
+import org.apache.spark.mllib.util.{ MultiLabeledPoint, MultiLabeledPointParser }
 import scopt.OptionParser
 import java.net.URI
 import org.apache.hadoop.conf.Configuration
@@ -27,7 +28,6 @@ import org.apache.spark.mllib.classification.multilabel.baselearners.DecisionStu
 import org.apache.spark.{ SparkContext, SparkConf }
 import org.apache.spark.rdd.RDD
 import org.apache.spark.Logging
-import org.apache.spark.mllib.classification.multilabel.{ MultiLabeledPoint, MultiLabeledPointParser }
 
 object MultiBoost extends Logging {
 

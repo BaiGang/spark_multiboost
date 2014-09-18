@@ -15,10 +15,9 @@
  * limitations under the License.
  */
 
-package org.apache.spark.mllib.classification.multilabel
+package org.apache.spark.mllib.util
 
 import org.apache.spark.mllib.linalg.{ Vectors, Vector }
-import org.apache.spark.mllib.util.NumericParser
 import org.apache.spark.SparkException
 
 /**
@@ -28,23 +27,19 @@ import org.apache.spark.SparkException
  * @param features Vector of features for this data point.
  */
 case class MultiLabeledPoint(labels: Vector, features: Vector) {
-  override def toString: String = {
-    "(%s,%s)".format(labels, features)
-  }
+  override def toString = s"($labels,$features)"
 }
 
 case class WeightedMultiLabeledPoint(
     weights: Vector,
     data: MultiLabeledPoint) {
   require(weights.size == data.labels.size)
-  override def toString: String = {
-    "(%s,%s)".format(weights, data)
-  }
+  override def toString = s"($weights,$data)"
 }
 
 /**
- * Parser for [[org.apache.spark.mllib.classification.multilabel.MultiLabeledPoint]]
- * and [[org.apache.spark.mllib.classification.multilabel.WeightedMultiLabeledPoint]].
+ * Parser for [[org.apache.spark.mllib.util.MultiLabeledPoint]]
+ * and [[org.apache.spark.mllib.util.WeightedMultiLabeledPoint]].
  */
 object MultiLabeledPointParser {
 
@@ -61,7 +56,7 @@ object MultiLabeledPointParser {
 
   /**
    * Parses a string resulted from `MultiLabeledPoint#toString` into
-   * an [[org.apache.spark.mllib.classification.multilabel.MultiLabeledPoint]]
+   * an [[org.apache.spark.mllib.util.MultiLabeledPoint]]
    * @param s A string in the form of `([1,0,1],[0.5,4.0,3.0])`, as resulted
    *          from `MultiLabeledPoint#toString`.
    * @return The parsed MultiLabeledPoint.
