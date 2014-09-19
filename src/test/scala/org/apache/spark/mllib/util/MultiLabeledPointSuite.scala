@@ -18,8 +18,8 @@
 package org.apache.spark.mllib.classification.multilabel
 
 import org.scalatest.FunSuite
-
 import org.apache.spark.mllib.linalg.Vectors
+import org.apache.spark.mllib.util.{ MultiLabeledPoint, MultiLabeledPointParser }
 
 class MultiLabeledPointSuite extends FunSuite {
 
