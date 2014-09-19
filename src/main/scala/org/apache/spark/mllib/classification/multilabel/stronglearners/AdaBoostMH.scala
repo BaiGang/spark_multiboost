@@ -21,7 +21,7 @@ import org.apache.spark.mllib.util.{ MultiLabeledPoint, WeightedMultiLabeledPoin
 
 import scala.language.higherKinds
 import org.apache.spark.SparkContext._
-import org.apache.spark.mllib.classification.multilabel.MultiLabelClassificationModel
+import org.apache.spark.mllib.classification.multilabel.{ MultiLabelClassificationModel, GeneralizedAdditiveModel }
 import org.apache.spark.rdd.RDD
 import org.apache.spark.mllib.linalg.{ Vectors, Vector }
 import org.apache.spark.annotation.Experimental
@@ -39,13 +39,13 @@ class AdaBoostMHModel[BM <: MultiLabelClassificationModel](
   numClasses: Int,
   numFeatureDimensions: Int,
   baseLearnersList: List[BM])
-    extends StrongLearnerModel[BM] {
+    extends StrongLearnerModel with GeneralizedAdditiveModel[BM] {
 
   var debugString: String = ""
 
   def this() = this(0, 0, List())
 
-  override def baseLearners = baseLearnersList
+  override def models = baseLearnersList
 
   override def predict(testData: RDD[Vector]): RDD[Vector] = {
     testData map predict
@@ -53,7 +53,7 @@ class AdaBoostMHModel[BM <: MultiLabelClassificationModel](
 
   override def predict(testData: Vector): Vector = {
 
-    val rawPredicts: Vector = baseLearners.foldLeft(
+    val rawPredicts: Vector = models.foldLeft(
       Vectors.dense(Array.fill[Double](numClasses)(0.0))) { (sum, item) =>
         val predicts = item predict testData
         Vectors.fromBreeze(sum.toBreeze + predicts.toBreeze)
@@ -65,7 +65,7 @@ class AdaBoostMHModel[BM <: MultiLabelClassificationModel](
     Vectors.dense(predictArray)
   }
 
-  override def toString = baseLearners mkString ";\n"
+  override def toString = models mkString ";\n"
 }
 
 @Experimental
@@ -115,7 +115,7 @@ class AdaBoostMHAlgorithm[BM <: BaseLearnerModel, BA <: BaseLearnerAlgorithm[BM]
 
       // 1.1 update strong learner
       val updatedStrongLearner = AdaBoostMHModel.apply[BM](
-        numClasses, numFeatureDimensions, iterData.model.baseLearners :+ baseLearner)
+        numClasses, numFeatureDimensions, iterData.model.models :+ baseLearner)
 
       // 2. get the weak hypothesis
       val predictsAndPoints = iterData.dataSet map { iterable =>

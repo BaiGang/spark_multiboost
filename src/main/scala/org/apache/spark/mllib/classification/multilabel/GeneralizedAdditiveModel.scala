@@ -15,20 +15,22 @@
  * limitations under the License.
  */
 
-package org.apache.spark.mllib.classification.multilabel.stronglearners
+package org.apache.spark.mllib.classification.multilabel
 
 import org.apache.spark.annotation.Experimental
-import org.apache.spark.mllib.classification.multilabel.MultiLabelClassificationAlgorithm
-import org.apache.spark.mllib.classification.multilabel.MultiLabelClassificationModel
-import org.apache.spark.mllib.util.MultiLabeledPoint
-import org.apache.spark.rdd.RDD
+import org.apache.spark.mllib.regression.RegressionModel
+import org.apache.spark.mllib.classification.ClassificationModel
+import org.apache.spark.Logging
 
+/**
+ * An abstraction of generalized additive model.
+ * @tparam BaseModel type of base models
+ *
+ */
 @Experimental
-abstract class StrongLearnerModel
-  extends MultiLabelClassificationModel
-
-@Experimental
-abstract class StrongLearnerAlgorithm[BM <: MultiLabelClassificationModel, BA <: MultiLabelClassificationAlgorithm[BM], SM <: StrongLearnerModel]
-    extends MultiLabelClassificationAlgorithm[SM] {
-  def run(dataSet: RDD[MultiLabeledPoint]): SM
+trait GeneralizedAdditiveModel[BaseModel]
+    extends Serializable with Logging {
+  def models: List[BaseModel]
 }
+
+// TODO: abstract the boosting procedure
