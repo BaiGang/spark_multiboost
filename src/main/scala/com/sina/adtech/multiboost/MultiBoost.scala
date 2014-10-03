@@ -17,14 +17,14 @@
 
 package com.sina.adtech.multiboost
 
+import org.apache.spark.mllib.classification.{ SVMWithSGD, LogisticRegressionWithSGD }
 import org.apache.spark.mllib.util.{ MultiLabeledPoint, MultiLabeledPointParser }
 import scopt.OptionParser
 import java.net.URI
 import org.apache.hadoop.conf.Configuration
 import org.apache.hadoop.fs.{ FileSystem, Path }
 import org.apache.spark.mllib.classification.multilabel.stronglearners.AdaBoostMHAlgorithm
-import org.apache.spark.mllib.classification.multilabel.baselearners.DecisionStumpAlgorithm
-import org.apache.spark.mllib.classification.multilabel.baselearners.DecisionStumpModel
+import org.apache.spark.mllib.classification.multilabel.baselearners._
 import org.apache.spark.{ SparkContext, SparkConf }
 import org.apache.spark.rdd.RDD
 import org.apache.spark.Logging
@@ -40,6 +40,8 @@ object MultiBoost extends Logging {
     type BaseLearnerType = Value
     val DecisionStump = Value
     val HammingTree = Value
+    val LRBase = Value
+    val SVMBase = Value
   }
 
   import StrongLearnerType._
@@ -142,16 +144,26 @@ object MultiBoost extends Logging {
     val numClasses = sample1.labels.size
     val numFeatureDimensions = sample1.features.size
 
-    val baseLearnerAlgo = new DecisionStumpAlgorithm(numClasses, numFeatureDimensions,
-      params.sampleRate, params.featureRate)
-    val strongLearnerAlgo = new AdaBoostMHAlgorithm[DecisionStumpModel, DecisionStumpAlgorithm](
-      baseLearnerAlgo,
-      numClasses,
-      numFeatureDimensions,
-      params.numIters)
+    val model = params.baseLearner match {
+      case BaseLearnerType.DecisionStump =>
+        val baseLearnerAlgo = new DecisionStumpAlgorithm(numClasses, numFeatureDimensions,
+          params.sampleRate, params.featureRate)
+        val strongLearnerAlgo = new AdaBoostMHAlgorithm[DecisionStumpModel, DecisionStumpAlgorithm](
+          baseLearnerAlgo, numClasses, numFeatureDimensions, params.numIters)
+        strongLearnerAlgo.run(trainingData)
 
-    // training
-    val model = strongLearnerAlgo.run(trainingData)
+      case BaseLearnerType.LRBase =>
+        val binaryAlgo = new LRClassificationAlgorithm(new LogisticRegressionWithSGD())
+        val baseLearnerAlgo = new GeneralizedBinaryBaseLearnerAlgorithm[LRClassificationModel, LRClassificationAlgorithm](numClasses, numFeatureDimensions, binaryAlgo)
+        val strongLearnerAlgo = new AdaBoostMHAlgorithm[GeneralizedBinaryBaseLearnerModel[LRClassificationModel], GeneralizedBinaryBaseLearnerAlgorithm[LRClassificationModel, LRClassificationAlgorithm]](baseLearnerAlgo, numClasses, numFeatureDimensions, params.numIters)
+        strongLearnerAlgo.run(trainingData)
+
+      case BaseLearnerType.SVMBase =>
+        val binaryAlgo = new SVMClassificationAlgorithm(new SVMWithSGD())
+        val baseLearnerAlgo = new GeneralizedBinaryBaseLearnerAlgorithm[SVMClassificationModel, SVMClassificationAlgorithm](numClasses, numFeatureDimensions, binaryAlgo)
+        val strongLearnerAlgo = new AdaBoostMHAlgorithm[GeneralizedBinaryBaseLearnerModel[SVMClassificationModel], GeneralizedBinaryBaseLearnerAlgorithm[SVMClassificationModel, SVMClassificationAlgorithm]](baseLearnerAlgo, numClasses, numFeatureDimensions, params.numIters)
+        strongLearnerAlgo.run(trainingData)
+    }
 
     val predicts = testingData.map {
       case s: MultiLabeledPoint => model predict s.features
