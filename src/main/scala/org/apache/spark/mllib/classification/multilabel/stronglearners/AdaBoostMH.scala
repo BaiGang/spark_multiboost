@@ -17,15 +17,14 @@
 
 package org.apache.spark.mllib.classification.multilabel.stronglearners
 
+import org.apache.spark.annotation.Experimental
+import org.apache.spark.mllib.classification.multilabel.baselearners.{ BaseLearnerAlgorithm, BaseLearnerModel, DecisionStumpAlgorithm, DecisionStumpModel }
+import org.apache.spark.mllib.classification.multilabel.{ GeneralizedAdditiveModel, MultiLabelClassificationModel }
+import org.apache.spark.mllib.linalg.{ Vector, Vectors }
 import org.apache.spark.mllib.util.{ MultiLabeledPoint, WeightedMultiLabeledPoint }
+import org.apache.spark.rdd.RDD
 
 import scala.language.higherKinds
-import org.apache.spark.SparkContext._
-import org.apache.spark.mllib.classification.multilabel.{ MultiLabelClassificationModel, GeneralizedAdditiveModel }
-import org.apache.spark.rdd.RDD
-import org.apache.spark.mllib.linalg.{ Vectors, Vector }
-import org.apache.spark.annotation.Experimental
-import org.apache.spark.mllib.classification.multilabel.baselearners.{ DecisionStumpAlgorithm, DecisionStumpModel, BaseLearnerModel, BaseLearnerAlgorithm }
 
 /**
  *
@@ -87,53 +86,44 @@ class AdaBoostMHAlgorithm[BM <: BaseLearnerModel, BA <: BaseLearnerAlgorithm[BM]
   override def numClasses = _numClasses
   override def numFeatureDimensions = _numFeatureDimensions
 
-  type DataSet = Array[WeightedMultiLabeledPoint]
-
   def run(dataSet: RDD[MultiLabeledPoint]): AdaBoostMHModel[BM] = {
 
     val weightedDataSet = AdaBoostMHAlgorithm.initWeights(numClasses, dataSet)
-
-    val distributedWeightedDataSet = weightedDataSet
-      .groupBy(_.hashCode() % (weightedDataSet.partitions.length * 2))
-      .map(_._2.toArray)
 
     /**
      * The encapsulation of the iteration data which consists of:
      * @param model the resulted model, a strong learner, of previous iterations.
      * @param dataSet the re-weighted multilabeled data points.
      */
-    case class IterationData(model: AdaBoostMHModel[BM], dataSet: RDD[DataSet])
+    case class IterationData(model: AdaBoostMHModel[BM], dataSet: RDD[WeightedMultiLabeledPoint])
 
     val finalIterationData = (1 to numIterations).foldLeft(IterationData(
       AdaBoostMHModel.apply[BM](numClasses, numFeatureDimensions, List()),
-      distributedWeightedDataSet)) { (iterData: IterationData, iter: Int) =>
+      weightedDataSet)) { (iterData: IterationData, iter: Int) =>
 
       logInfo(s"Start $iter-th iteration.")
 
       // 1. train a new base learner
-      val baseLearner = baseLearnerAlgo.run(iterData.dataSet, 11367L + 3 * iter)
+      val baseLearner = baseLearnerAlgo.run(iterData.dataSet)
 
       // 1.1 update strong learner
       val updatedStrongLearner = AdaBoostMHModel.apply[BM](
         numClasses, numFeatureDimensions, iterData.model.models :+ baseLearner)
 
       // 2. get the weak hypothesis
-      val predictsAndPoints = iterData.dataSet map { iterable =>
-        iterable map { wmlPoint =>
-          (baseLearner.predict(wmlPoint.data.features), wmlPoint)
-        }
+      val predictsAndPoints = iterData.dataSet map { wmlPoint =>
+        (baseLearner.predict(wmlPoint.data.features), wmlPoint)
       }
 
       // 3. sum up the normalize factor
       val summedZ = predictsAndPoints.aggregate(0.0)({
         // seqOp
-        case (sum: Double, array: Array[(Vector, WeightedMultiLabeledPoint)]) =>
-          array.foldLeft(0.0) {
-            case (sum1: Double, (predict: Vector, wmlp: WeightedMultiLabeledPoint)) =>
-              (predict.toArray zip wmlp.data.labels.toArray zip wmlp.weights.toArray).map {
-                case ((p, l), w) => w * math.exp(-p * l)
-              }.sum + sum1
-          } + sum
+        case (sum: Double, (predict: Vector, wmlp: WeightedMultiLabeledPoint)) =>
+          (predict.toArray zip wmlp.data.labels.toArray zip wmlp.weights.toArray)
+            .map {
+              case ((p, l), w) =>
+                w * math.exp(-p * l)
+            }.sum + sum
       }, { _ + _ })
 
       logInfo(s"Weights normalization factor (Z) value: $summedZ")
@@ -141,14 +131,11 @@ class AdaBoostMHAlgorithm[BM <: BaseLearnerModel, BA <: BaseLearnerAlgorithm[BM]
 
       // 4. re-weight the data set
       val reweightedDataSet = predictsAndPoints map {
-        case iterable =>
-          iterable map {
-            case (predict: Vector, wmlp: WeightedMultiLabeledPoint) =>
-              val updatedWeights = for (i <- 0 until numClasses)
-                yield wmlp.weights(i) * math.exp(-predict(i) * wmlp.data.labels(i)) / summedZ
-              WeightedMultiLabeledPoint(
-                Vectors.dense(updatedWeights.toArray), wmlp.data)
-          }
+        case (predict: Vector, wmlp: WeightedMultiLabeledPoint) =>
+          val updatedWeights = for (i <- 0 until numClasses)
+            yield wmlp.weights(i) * math.exp(-predict(i) * wmlp.data.labels(i)) / summedZ
+          WeightedMultiLabeledPoint(
+            Vectors.dense(updatedWeights.toArray), wmlp.data)
       }
 
       // 5. next recursion
@@ -191,6 +178,7 @@ object AdaBoostMH {
     val numClasses = dataSet.take(1)(0).labels.size
     val numFeatureDimensions = dataSet.take(1)(0).features.size
 
+    // FIXME(baigang): general base learner.
     val decisionStumpAlgo = new DecisionStumpAlgorithm(numClasses, numFeatureDimensions)
     val adaboostMHAlgo = new AdaBoostMHAlgorithm[DecisionStumpModel, DecisionStumpAlgorithm](
       decisionStumpAlgo,
