@@ -82,20 +82,21 @@ class DecisionStumpAlgorithm(
   override def numClasses = _numClasses
   override def numFeatureDimensions = _numFeatureDimensions
 
-  override def run(dataSet: RDD[Array[WeightedMultiLabeledPoint]], seed: Long = 0): DecisionStumpModel = {
+  override def run(dataSet: RDD[WeightedMultiLabeledPoint]): DecisionStumpModel = {
+
+    val seed: Long = 59L
+
+    val groupedDataSet = dataSet.groupBy(_.hashCode() % (dataSet.partitions.length * 2))
+      .map(_._2.toArray)
 
     val bernoulliSampler = new BernoulliSampler[Int](featureRate)
     bernoulliSampler setSeed seed
 
-    val allSplitMetrics = dataSet flatMap (DecisionStumpAlgorithm.getLocalSplitMetrics(
+    val allSplitMetrics = groupedDataSet flatMap (DecisionStumpAlgorithm.getLocalSplitMetrics(
       bernoulliSampler sample Iterator.range(0, numFeatureDimensions))(_))
 
     DecisionStumpAlgorithm findBestSplitMetrics (
       DecisionStumpAlgorithm aggregateSplitMetrics allSplitMetrics)
-  }
-
-  override def run(dataSet: RDD[WeightedMultiLabeledPoint]): DecisionStumpModel = {
-    throw new NotImplementedError(s"Discretized ``run'' is not implemented for ${this.getClass}.")
   }
 }
 

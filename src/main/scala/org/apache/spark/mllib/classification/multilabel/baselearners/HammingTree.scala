@@ -66,15 +66,9 @@ class HammingTreeAlgorithm(
   /**
    * Procedure for training a HammingTreeModel.
    * @param dataSet The weighted training data set.
-   * @param seed The random seed for samplers.
    * @return A HammingTreeModel trained with the dataset.
    */
-  def run(dataSet: RDD[Array[WeightedMultiLabeledPoint]], seed: Long): HammingTreeModel = {
-    // TODO: training of the tree
-    new HammingTreeModel()
-  }
-
   override def run(dataSet: RDD[WeightedMultiLabeledPoint]): HammingTreeModel = {
-    throw new NotImplementedError(s"Discretized ``run'' is not implemented for ${this.getClass}.")
+    new HammingTreeModel()
   }
 }
