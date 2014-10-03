@@ -19,9 +19,9 @@ package org.apache.spark.mllib.util
 
 import java.util.StringTokenizer
 
-import scala.collection.mutable.{ ArrayBuffer, ListBuffer }
-
 import org.apache.spark.SparkException
+
+import scala.collection.mutable.{ ArrayBuffer, ListBuffer }
 
 /**
  * Simple parser for a numeric structure consisting of three types:

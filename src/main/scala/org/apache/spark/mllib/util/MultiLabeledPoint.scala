@@ -17,8 +17,8 @@
 
 package org.apache.spark.mllib.util
 
-import org.apache.spark.mllib.linalg.{ Vectors, Vector }
 import org.apache.spark.SparkException
+import org.apache.spark.mllib.linalg.{ Vector, Vectors }
 
 /**
  * Class that represents the features and labels of a data point.

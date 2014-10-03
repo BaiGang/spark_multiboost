@@ -17,10 +17,8 @@
 
 package org.apache.spark.mllib.classification.multilabel
 
-import org.apache.spark.annotation.Experimental
-import org.apache.spark.mllib.regression.RegressionModel
-import org.apache.spark.mllib.classification.ClassificationModel
 import org.apache.spark.Logging
+import org.apache.spark.annotation.Experimental
 
 /**
  * An abstraction of generalized additive model.

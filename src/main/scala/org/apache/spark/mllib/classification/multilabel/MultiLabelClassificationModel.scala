@@ -17,10 +17,10 @@
 
 package org.apache.spark.mllib.classification.multilabel
 
+import org.apache.spark.Logging
 import org.apache.spark.annotation.Experimental
 import org.apache.spark.mllib.linalg.Vector
 import org.apache.spark.rdd.RDD
-import org.apache.spark.Logging
 
 @Experimental
 trait MultiLabelClassificationModel extends Serializable
