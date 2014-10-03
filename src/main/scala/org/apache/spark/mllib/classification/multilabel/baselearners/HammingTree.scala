@@ -73,4 +73,8 @@ class HammingTreeAlgorithm(
     // TODO: training of the tree
     new HammingTreeModel()
   }
+
+  override def run(dataSet: RDD[WeightedMultiLabeledPoint]): HammingTreeModel = {
+    throw new NotImplementedError(s"Discretized ``run'' is not implemented for ${this.getClass}.")
+  }
 }

@@ -18,8 +18,7 @@
 package org.apache.spark.mllib.classification.multilabel.baselearners
 
 import org.apache.spark.annotation.Experimental
-import org.apache.spark.mllib.classification.multilabel.MultiLabelClassificationAlgorithm
-import org.apache.spark.mllib.classification.multilabel.MultiLabelClassificationModel
+import org.apache.spark.mllib.classification.multilabel.{ MultiLabelClassificationAlgorithm, MultiLabelClassificationModel }
 import org.apache.spark.mllib.util.WeightedMultiLabeledPoint
 import org.apache.spark.rdd.RDD
 
@@ -28,7 +27,6 @@ import org.apache.spark.rdd.RDD
  */
 @Experimental
 abstract class BaseLearnerModel extends MultiLabelClassificationModel {
-
 }
 
 /**
@@ -41,5 +39,6 @@ abstract class BaseLearnerModel extends MultiLabelClassificationModel {
 abstract class BaseLearnerAlgorithm[M <: BaseLearnerModel]
     extends MultiLabelClassificationAlgorithm[M] {
   def run(dataSet: RDD[Array[WeightedMultiLabeledPoint]], seed: Long): M
+  def run(dataSet: RDD[WeightedMultiLabeledPoint]): M
 }
 

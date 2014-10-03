@@ -17,14 +17,14 @@
 
 package org.apache.spark.mllib.classification.multilabel.baselearners
 
-import org.apache.spark.mllib.linalg.{ Vectors, Vector }
+import org.apache.spark.Logging
 import org.apache.spark.SparkContext._
 import org.apache.spark.annotation.Experimental
+import org.apache.spark.mllib.linalg.{ Vector, Vectors }
 import org.apache.spark.mllib.util.{ MultiLabeledPoint, WeightedMultiLabeledPoint }
 import org.apache.spark.rdd.RDD
-
-import org.apache.spark.Logging
 import org.apache.spark.util.random.BernoulliSampler
+
 import scala.collection.mutable.ArrayBuffer
 
 @Experimental
@@ -94,6 +94,9 @@ class DecisionStumpAlgorithm(
       DecisionStumpAlgorithm aggregateSplitMetrics allSplitMetrics)
   }
 
+  override def run(dataSet: RDD[WeightedMultiLabeledPoint]): DecisionStumpModel = {
+    throw new NotImplementedError(s"Discretized ``run'' is not implemented for ${this.getClass}.")
+  }
 }
 
 object DecisionStumpAlgorithm {
