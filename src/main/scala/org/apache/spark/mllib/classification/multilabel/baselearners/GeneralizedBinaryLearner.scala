@@ -23,7 +23,7 @@ trait BinaryClassificationAlgorithm[M <: BinaryClassificationModel] {
 class GeneralizedBinaryBaseLearnerModel[BCM <: BinaryClassificationModel](
     alpha: Double,
     votes: Vector,
-    binaryClassifier: BCM) extends BaseLearnerModel {
+    binaryClassifier: BCM) extends BaseLearnerModel with Serializable {
 
   def predict(testData: RDD[Vector]): RDD[Vector] = {
     testData.map(predict)
@@ -36,9 +36,10 @@ class GeneralizedBinaryBaseLearnerModel[BCM <: BinaryClassificationModel](
 }
 
 class GeneralizedBinaryBaseLearnerAlgorithm[BCM <: BinaryClassificationModel, BCA <: BinaryClassificationAlgorithm[BCM]](
-    _numFeatureDimensions: Int,
-    _numClasses: Int,
-    binaryClassificationAlgo: BCA) extends BaseLearnerAlgorithm[GeneralizedBinaryBaseLearnerModel[BCM]] {
+  _numFeatureDimensions: Int,
+  _numClasses: Int,
+  binaryClassificationAlgo: BCA) extends BaseLearnerAlgorithm[GeneralizedBinaryBaseLearnerModel[BCM]]
+    with Serializable {
 
   def numFeatureDimensions = _numFeatureDimensions
   def numClasses = _numClasses
@@ -75,7 +76,7 @@ class GeneralizedBinaryBaseLearnerAlgorithm[BCM <: BinaryClassificationModel, BC
 }
 
 class LRClassificationModel(lrModel: LogisticRegressionModel)
-    extends BinaryClassificationModel {
+    extends BinaryClassificationModel with Serializable {
 
   def predictPoint(testData: Vector): Double = {
     lrModel.predict(testData)
@@ -83,7 +84,8 @@ class LRClassificationModel(lrModel: LogisticRegressionModel)
 }
 
 class LRClassificationAlgorithm(lrSGD: LogisticRegressionWithSGD)
-    extends BinaryClassificationAlgorithm[LRClassificationModel] {
+    extends BinaryClassificationAlgorithm[LRClassificationModel]
+    with Serializable {
 
   def run(dataSet: RDD[LabeledPoint]): LRClassificationModel = {
     new LRClassificationModel(lrSGD.run(dataSet))
@@ -91,7 +93,7 @@ class LRClassificationAlgorithm(lrSGD: LogisticRegressionWithSGD)
 }
 
 class SVMClassificationModel(svmModel: SVMModel)
-    extends BinaryClassificationModel {
+    extends BinaryClassificationModel with Serializable {
 
   def predictPoint(testData: Vector): Double = {
     svmModel.predict(testData)
@@ -99,9 +101,11 @@ class SVMClassificationModel(svmModel: SVMModel)
 }
 
 class SVMClassificationAlgorithm(svmSGD: SVMWithSGD)
-    extends BinaryClassificationAlgorithm[SVMClassificationModel] {
+    extends BinaryClassificationAlgorithm[SVMClassificationModel]
+    with Serializable {
 
   def run(dataSet: RDD[LabeledPoint]): SVMClassificationModel = {
     new SVMClassificationModel(svmSGD.run(dataSet))
   }
 }
+
