@@ -36,10 +36,11 @@ class GeneralizedBinaryBaseLearnerModel[BCM <: BinaryClassificationModel](
 }
 
 class GeneralizedBinaryBaseLearnerAlgorithm[BCM <: BinaryClassificationModel, BCA <: BinaryClassificationAlgorithm[BCM]](
-  _numFeatureDimensions: Int,
-  _numClasses: Int,
-  binaryClassificationAlgo: BCA) extends BaseLearnerAlgorithm[GeneralizedBinaryBaseLearnerModel[BCM]]
-    with Serializable {
+    _numClasses: Int,
+    _numFeatureDimensions: Int,
+    binaryClassificationAlgo: BCA)
+  extends BaseLearnerAlgorithm[GeneralizedBinaryBaseLearnerModel[BCM]]
+  with Serializable {
 
   def numFeatureDimensions = _numFeatureDimensions
   def numClasses = _numClasses
@@ -56,9 +57,8 @@ class GeneralizedBinaryBaseLearnerAlgorithm[BCM <: BinaryClassificationModel, BC
 
     val edges = dataSet.map { wmlp =>
       (wmlp.weights, wmlp.data.labels, 2.0 * bc.predictPoint(wmlp.data.features) - 1.0)
-    }.map {
-      case (weights, labels, binPredict) =>
-        for (i <- 0 until numClasses) yield binPredict * weights(i) * labels(i)
+    }.map { case (weights, labels, binPredict) =>
+      for (i <- 0 until numClasses) yield binPredict * weights(i) * labels(i)
     }.reduce { (a, b) =>
       for (i <- 0 until numClasses) yield a(i) + b(i)
     }
