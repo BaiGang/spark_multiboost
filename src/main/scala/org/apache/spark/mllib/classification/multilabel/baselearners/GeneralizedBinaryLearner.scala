@@ -25,14 +25,16 @@ class GeneralizedBinaryBaseLearnerModel[BCM <: BinaryClassificationModel](
     votes: Vector,
     binaryClassifier: BCM) extends BaseLearnerModel with Serializable {
 
-  def predict(testData: RDD[Vector]): RDD[Vector] = {
+  override def predict(testData: RDD[Vector]): RDD[Vector] = {
     testData.map(predict)
   }
 
-  def predict(testData: Vector): Vector = {
+  override def predict(testData: Vector): Vector = {
     val binPredict = binaryClassifier.predictPoint(testData) * 2.0 - 1.0
     Vectors.fromBreeze(votes.toBreeze * alpha * binPredict)
   }
+
+  override def toString = s"($alpha, $votes, $binaryClassifier"
 }
 
 class GeneralizedBinaryBaseLearnerAlgorithm[BCM <: BinaryClassificationModel, BCA <: BinaryClassificationAlgorithm[BCM]](
@@ -42,10 +44,10 @@ class GeneralizedBinaryBaseLearnerAlgorithm[BCM <: BinaryClassificationModel, BC
   extends BaseLearnerAlgorithm[GeneralizedBinaryBaseLearnerModel[BCM]]
   with Serializable {
 
-  def numFeatureDimensions = _numFeatureDimensions
-  def numClasses = _numClasses
+  override def numFeatureDimensions = _numFeatureDimensions
+  override def numClasses = _numClasses
 
-  def run(dataSet: RDD[WeightedMultiLabeledPoint]): GeneralizedBinaryBaseLearnerModel[BCM] = {
+  override def run(dataSet: RDD[WeightedMultiLabeledPoint]): GeneralizedBinaryBaseLearnerModel[BCM] = {
     val convertedBinaryDataset = dataSet map { wmlp =>
       val weightedSumLabel = (wmlp.weights.toArray zip wmlp.data.labels.toArray)
         .map(pair => pair._1 * pair._2)
@@ -70,7 +72,7 @@ class GeneralizedBinaryBaseLearnerAlgorithm[BCM <: BinaryClassificationModel, BC
     new GeneralizedBinaryBaseLearnerModel[BCM](alpha, Vectors.dense(votes), bc)
   }
 
-  def run(dataSet: RDD[Array[WeightedMultiLabeledPoint]], seed: Long): GeneralizedBinaryBaseLearnerModel[BCM] = {
+  override def run(dataSet: RDD[Array[WeightedMultiLabeledPoint]], seed: Long): GeneralizedBinaryBaseLearnerModel[BCM] = {
     throw new NotImplementedError(s"Aggregated ``run'' is not implemented for ${this.getClass}.")
   }
 }
@@ -78,16 +80,17 @@ class GeneralizedBinaryBaseLearnerAlgorithm[BCM <: BinaryClassificationModel, BC
 class LRClassificationModel(lrModel: LogisticRegressionModel)
     extends BinaryClassificationModel with Serializable {
 
-  def predictPoint(testData: Vector): Double = {
+  override def predictPoint(testData: Vector): Double = {
     lrModel.predict(testData)
   }
+  override def toString = s"(${lrModel.intercept},${lrModel.weights}})"
 }
 
 class LRClassificationAlgorithm(lrSGD: LogisticRegressionWithSGD)
     extends BinaryClassificationAlgorithm[LRClassificationModel]
     with Serializable {
 
-  def run(dataSet: RDD[LabeledPoint]): LRClassificationModel = {
+  override def run(dataSet: RDD[LabeledPoint]): LRClassificationModel = {
     new LRClassificationModel(lrSGD.run(dataSet))
   }
 }
@@ -95,9 +98,10 @@ class LRClassificationAlgorithm(lrSGD: LogisticRegressionWithSGD)
 class SVMClassificationModel(svmModel: SVMModel)
     extends BinaryClassificationModel with Serializable {
 
-  def predictPoint(testData: Vector): Double = {
+  override def predictPoint(testData: Vector): Double = {
     svmModel.predict(testData)
   }
+  override def toString = s"(${svmModel.intercept},${svmModel.weights})"
 }
 
 class SVMClassificationAlgorithm(svmSGD: SVMWithSGD)
