@@ -25,7 +25,6 @@ class KryoRegistrator extends org.apache.spark.serializer.KryoRegistrator {
     kryo.register(classOf[org.apache.spark.mllib.classification.multilabel.baselearners.FeatureCut])
     kryo.register(classOf[org.apache.spark.mllib.classification.multilabel.baselearners.DecisionStumpModel])
     kryo.register(classOf[org.apache.spark.mllib.classification.multilabel.baselearners.DecisionStumpAlgorithm.SplitMetric])
-    kryo.register(classOf[org.apache.spark.mllib.classification.multilabel.baselearners.GeneralizedBinaryBaseLearnerModel])
     kryo.register(classOf[org.apache.spark.mllib.classification.multilabel.baselearners.LRClassificationModel])
     kryo.register(classOf[org.apache.spark.mllib.classification.multilabel.baselearners.SVMClassificationModel])
     kryo.register(classOf[org.apache.spark.mllib.util.WeightedMultiLabeledPoint])
