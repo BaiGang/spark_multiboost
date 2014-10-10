@@ -92,11 +92,11 @@ object MultiBoost extends Logging {
       opt[Int]("num_partitions")
         .text(s"num of partitions for sc.textFile")
         .action((x, c) => c.copy(numPartitions = x))
-      opt[StrongLearnerType]("strongLearner")
+      opt[StrongLearnerType]("strong_learner")
         .text(s"the strong learner algorithm (${StrongLearnerType.values.mkString(",")}}),"
           + s" default: AdaBoostMH.")
         .action((x, c) => c.copy(strongLearner = x))
-      opt[BaseLearnerType]("baseLearner")
+      opt[BaseLearnerType]("base_learner")
         .text(s"the base learner algorithm (${BaseLearnerType.values.mkString(",")}),"
           + s" default: DecisionStump.")
         .action((x, c) => c.copy(baseLearner = x))
