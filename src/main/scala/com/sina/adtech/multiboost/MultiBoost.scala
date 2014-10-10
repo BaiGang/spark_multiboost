@@ -107,13 +107,6 @@ object MultiBoost extends Logging {
     parser.parse(args, Params()) map {
       case params: Params =>
 
-        // Currently we only support AdaBoost.MH with Decision Stump as base learner.
-        if (params.baseLearner != DecisionStump
-          && params.strongLearner != AdaBoostMH) {
-          logError(s"Currently we only support Adaboost.MH with DecisionStump.")
-          sys.exit(1)
-        }
-
         logInfo(s"params: $params")
 
         // execute the training
