@@ -21,9 +21,13 @@ import com.esotericsoftware.kryo.Kryo
 
 class KryoRegistrator extends org.apache.spark.serializer.KryoRegistrator {
   override def registerClasses(kryo: Kryo) = {
+    kryo.register(classOf[org.apache.spark.mllib.classification.multilabel.baselearners.BaseLearnerModel])
     kryo.register(classOf[org.apache.spark.mllib.classification.multilabel.baselearners.FeatureCut])
     kryo.register(classOf[org.apache.spark.mllib.classification.multilabel.baselearners.DecisionStumpModel])
     kryo.register(classOf[org.apache.spark.mllib.classification.multilabel.baselearners.DecisionStumpAlgorithm.SplitMetric])
+    kryo.register(classOf[org.apache.spark.mllib.classification.multilabel.baselearners.GeneralizedBinaryBaseLearnerModel])
+    kryo.register(classOf[org.apache.spark.mllib.classification.multilabel.baselearners.LRClassificationModel])
+    kryo.register(classOf[org.apache.spark.mllib.classification.multilabel.baselearners.SVMClassificationModel])
     kryo.register(classOf[org.apache.spark.mllib.util.WeightedMultiLabeledPoint])
     kryo.register(classOf[org.apache.spark.mllib.util.MultiLabeledPoint])
   }
