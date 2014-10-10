@@ -38,11 +38,11 @@ class GeneralizedBinaryBaseLearnerModel[BCM <: BinaryClassificationModel](
 }
 
 class GeneralizedBinaryBaseLearnerAlgorithm[BCM <: BinaryClassificationModel, BCA <: BinaryClassificationAlgorithm[BCM]](
-    _numClasses: Int,
-    _numFeatureDimensions: Int,
-    binaryClassificationAlgo: BCA)
-  extends BaseLearnerAlgorithm[GeneralizedBinaryBaseLearnerModel[BCM]]
-  with Serializable {
+  _numClasses: Int,
+  _numFeatureDimensions: Int,
+  binaryClassificationAlgo: BCA)
+    extends BaseLearnerAlgorithm[GeneralizedBinaryBaseLearnerModel[BCM]]
+    with Serializable {
 
   override def numFeatureDimensions = _numFeatureDimensions
   override def numClasses = _numClasses
@@ -59,8 +59,9 @@ class GeneralizedBinaryBaseLearnerAlgorithm[BCM <: BinaryClassificationModel, BC
 
     val edges = dataSet.map { wmlp =>
       (wmlp.weights, wmlp.data.labels, 2.0 * bc.predictPoint(wmlp.data.features) - 1.0)
-    }.map { case (weights, labels, binPredict) =>
-      for (i <- 0 until numClasses) yield binPredict * weights(i) * labels(i)
+    }.map {
+      case (weights, labels, binPredict) =>
+        for (i <- 0 until numClasses) yield binPredict * weights(i) * labels(i)
     }.reduce { (a, b) =>
       for (i <- 0 until numClasses) yield a(i) + b(i)
     }
@@ -72,9 +73,6 @@ class GeneralizedBinaryBaseLearnerAlgorithm[BCM <: BinaryClassificationModel, BC
     new GeneralizedBinaryBaseLearnerModel[BCM](alpha, Vectors.dense(votes), bc)
   }
 
-  override def run(dataSet: RDD[Array[WeightedMultiLabeledPoint]], seed: Long): GeneralizedBinaryBaseLearnerModel[BCM] = {
-    throw new NotImplementedError(s"Aggregated ``run'' is not implemented for ${this.getClass}.")
-  }
 }
 
 class LRClassificationModel(lrModel: LogisticRegressionModel)
