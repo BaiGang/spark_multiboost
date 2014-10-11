@@ -5,7 +5,7 @@ package org.apache.spark.mllib.classification.multilabel.baselearners
 import org.apache.spark.annotation.Experimental
 import org.apache.spark.mllib.classification._
 import org.apache.spark.mllib.linalg.{ Vectors, Vector }
-import org.apache.spark.mllib.regression.{ GeneralizedLinearAlgorithm, LabeledPoint }
+import org.apache.spark.mllib.regression.LabeledPoint
 import org.apache.spark.mllib.util.WeightedMultiLabeledPoint
 import org.apache.spark.rdd.RDD
 
@@ -84,12 +84,12 @@ class LRClassificationModel(lrModel: LogisticRegressionModel)
   override def toString = s"(${lrModel.intercept},${lrModel.weights}})"
 }
 
-class LRClassificationAlgorithm(lrSGD: LogisticRegressionWithSGD)
+class LRClassificationAlgorithm
     extends BinaryClassificationAlgorithm[LRClassificationModel]
     with Serializable {
 
   override def run(dataSet: RDD[LabeledPoint]): LRClassificationModel = {
-    new LRClassificationModel(lrSGD.run(dataSet))
+    new LRClassificationModel(LogisticRegressionWithSGD.train(dataSet, 10, 0.5, 1.0))
   }
 }
 
@@ -102,12 +102,12 @@ class SVMClassificationModel(svmModel: SVMModel)
   override def toString = s"(${svmModel.intercept},${svmModel.weights})"
 }
 
-class SVMClassificationAlgorithm(svmSGD: SVMWithSGD)
+class SVMClassificationAlgorithm
     extends BinaryClassificationAlgorithm[SVMClassificationModel]
     with Serializable {
 
   def run(dataSet: RDD[LabeledPoint]): SVMClassificationModel = {
-    new SVMClassificationModel(svmSGD.run(dataSet))
+    new SVMClassificationModel(SVMWithSGD.train(dataSet, 10, 0.5, 0.75, 0.5))
   }
 }
 

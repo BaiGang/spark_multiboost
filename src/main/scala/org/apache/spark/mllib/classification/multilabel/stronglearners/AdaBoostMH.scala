@@ -176,4 +176,3 @@ object AdaBoostMHAlgorithm {
   }
 }
 
-}

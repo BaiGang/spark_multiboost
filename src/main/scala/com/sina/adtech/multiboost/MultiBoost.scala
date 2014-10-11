@@ -146,13 +146,13 @@ object MultiBoost extends Logging {
         strongLearnerAlgo.run(trainingData)
 
       case BaseLearnerType.LRBase =>
-        val binaryAlgo = new LRClassificationAlgorithm(new LogisticRegressionWithSGD())
+        val binaryAlgo = new LRClassificationAlgorithm
         val baseLearnerAlgo = new GeneralizedBinaryBaseLearnerAlgorithm[LRClassificationModel, LRClassificationAlgorithm](numClasses, numFeatureDimensions, binaryAlgo)
         val strongLearnerAlgo = new AdaBoostMHAlgorithm[GeneralizedBinaryBaseLearnerModel[LRClassificationModel], GeneralizedBinaryBaseLearnerAlgorithm[LRClassificationModel, LRClassificationAlgorithm]](baseLearnerAlgo, numClasses, numFeatureDimensions, params.numIters)
         strongLearnerAlgo.run(trainingData)
 
       case BaseLearnerType.SVMBase =>
-        val binaryAlgo = new SVMClassificationAlgorithm(new SVMWithSGD())
+        val binaryAlgo = new SVMClassificationAlgorithm
         val baseLearnerAlgo = new GeneralizedBinaryBaseLearnerAlgorithm[SVMClassificationModel, SVMClassificationAlgorithm](numClasses, numFeatureDimensions, binaryAlgo)
         val strongLearnerAlgo = new AdaBoostMHAlgorithm[GeneralizedBinaryBaseLearnerModel[SVMClassificationModel], GeneralizedBinaryBaseLearnerAlgorithm[SVMClassificationModel, SVMClassificationAlgorithm]](baseLearnerAlgo, numClasses, numFeatureDimensions, params.numIters)
         strongLearnerAlgo.run(trainingData)
