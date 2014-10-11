@@ -120,8 +120,9 @@ class AdaBoostMHAlgorithm[BM <: BaseLearnerModel, BA <: BaseLearnerAlgorithm[BM]
         // seqOp
         case (sum: Double, (predict: Vector, wmlp: WeightedMultiLabeledPoint)) =>
           (predict.toArray zip wmlp.data.labels.toArray zip wmlp.weights.toArray)
-            .map { case ((p, l), w) =>
-              w * math.exp(-p * l)
+            .map {
+              case ((p, l), w) =>
+                w * math.exp(-p * l)
             }.sum + sum
       }, { _ + _ })
 
@@ -130,10 +131,15 @@ class AdaBoostMHAlgorithm[BM <: BaseLearnerModel, BA <: BaseLearnerAlgorithm[BM]
 
       // XXX: should be using multi-label metrics in mllib.
       // 3.1 hamming loss
-      val hammingLoss = predictsAndPoints.flatMap { case (predict, wmlp) =>
-        predict.toArray zip wmlp.data.labels.toArray
-      }.filter { case (p, l) =>
-        p * l < 0.0
+      val strongPredictsAndLabels = iterData.dataSet.map { wmlp =>
+        (updatedStrongLearner.predict(wmlp.data.features), wmlp.data.labels)
+      }
+      val hammingLoss = strongPredictsAndLabels.flatMap {
+        case (predict, label) =>
+          predict.toArray zip label.toArray
+      }.filter {
+        case (p, l) =>
+          p * l < 0.0
       }.count.toDouble / (predictsAndPoints.count * numClasses).toDouble
 
       updatedStrongLearner.debugString = iterData.model.debugString + s"\nIter $iter. Hamming loss: $hammingLoss"
