@@ -117,10 +117,13 @@ object MultiBoost extends Logging {
   }
 
   def run(params: Params) {
-    val conf = new SparkConf().setAppName(params.jobDescription)
-    conf.set("spark.storage.memoryFraction", "0.5")
-    conf.set("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
-    conf.set("spark.kryo.registrator", "com.sina.adtech.multiboost.KryoRegistrator")
+    val conf = new SparkConf()
+      .setAppName(params.jobDescription)
+      .setExecutorEnv("SPARK_JAVA_OPTS", "-Dspark.akka.frameSize=128")
+      .set("spark.akka.frameSize", "128")
+      .set("spark.storage.memoryFraction", "0.5")
+      .set("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
+      .set("spark.kryo.registrator", "com.sina.adtech.multiboost.KryoRegistrator")
 
     val sc = new SparkContext(conf)
     val trainingData = sc.textFile(params.trainingData, params.numPartitions)
