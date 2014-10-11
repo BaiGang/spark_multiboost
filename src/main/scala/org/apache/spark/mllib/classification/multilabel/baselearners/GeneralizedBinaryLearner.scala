@@ -37,6 +37,7 @@ class GeneralizedBinaryBaseLearnerModel[BCM <: BinaryClassificationModel](
   override def toString = s"($alpha, $votes, $binaryClassifier"
 }
 
+@Experimental
 class GeneralizedBinaryBaseLearnerAlgorithm[BCM <: BinaryClassificationModel, BCA <: BinaryClassificationAlgorithm[BCM]](
   _numClasses: Int,
   _numFeatureDimensions: Int,
@@ -75,6 +76,7 @@ class GeneralizedBinaryBaseLearnerAlgorithm[BCM <: BinaryClassificationModel, BC
 
 }
 
+@Experimental
 class LRClassificationModel(lrModel: LogisticRegressionModel)
     extends BinaryClassificationModel with Serializable {
 
@@ -84,6 +86,7 @@ class LRClassificationModel(lrModel: LogisticRegressionModel)
   override def toString = s"(${lrModel.intercept},${lrModel.weights}})"
 }
 
+@Experimental
 class LRClassificationAlgorithm
     extends BinaryClassificationAlgorithm[LRClassificationModel]
     with Serializable {
@@ -93,6 +96,7 @@ class LRClassificationAlgorithm
   }
 }
 
+@Experimental
 class SVMClassificationModel(svmModel: SVMModel)
     extends BinaryClassificationModel with Serializable {
 
@@ -102,6 +106,7 @@ class SVMClassificationModel(svmModel: SVMModel)
   override def toString = s"(${svmModel.intercept},${svmModel.weights})"
 }
 
+@Experimental
 class SVMClassificationAlgorithm
     extends BinaryClassificationAlgorithm[SVMClassificationModel]
     with Serializable {
