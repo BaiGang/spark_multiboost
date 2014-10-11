@@ -120,14 +120,23 @@ class AdaBoostMHAlgorithm[BM <: BaseLearnerModel, BA <: BaseLearnerAlgorithm[BM]
         // seqOp
         case (sum: Double, (predict: Vector, wmlp: WeightedMultiLabeledPoint)) =>
           (predict.toArray zip wmlp.data.labels.toArray zip wmlp.weights.toArray)
-            .map {
-              case ((p, l), w) =>
-                w * math.exp(-p * l)
+            .map { case ((p, l), w) =>
+              w * math.exp(-p * l)
             }.sum + sum
       }, { _ + _ })
 
       logInfo(s"Weights normalization factor (Z) value: $summedZ")
       updatedStrongLearner.debugString = iterData.model.debugString + s"\nZ=$summedZ"
+
+      // XXX: should be using multi-label metrics in mllib.
+      // 3.1 hamming loss
+      val hammingLoss = predictsAndPoints.flatMap { case (predict, wmlp) =>
+        predict.toArray zip wmlp.data.labels.toArray
+      }.filter { case (p, l) =>
+        p * l < 0.0
+      }.count.toDouble / (predictsAndPoints.count * numClasses).toDouble
+
+      updatedStrongLearner.debugString = iterData.model.debugString + s"\nIter $iter. Hamming loss: $hammingLoss"
 
       // 4. re-weight the data set
       val reweightedDataSet = predictsAndPoints map {
@@ -167,25 +176,4 @@ object AdaBoostMHAlgorithm {
   }
 }
 
-object AdaBoostMH {
-  /**
-   * Train an AdaBoost.MH model with DecisionStump as base learner.
-   *
-   */
-  def train(
-    dataSet: RDD[MultiLabeledPoint],
-    numIters: Int): AdaBoostMHModel[DecisionStumpModel] = {
-    val numClasses = dataSet.take(1)(0).labels.size
-    val numFeatureDimensions = dataSet.take(1)(0).features.size
-
-    // FIXME(baigang): general base learner.
-    val decisionStumpAlgo = new DecisionStumpAlgorithm(numClasses, numFeatureDimensions)
-    val adaboostMHAlgo = new AdaBoostMHAlgorithm[DecisionStumpModel, DecisionStumpAlgorithm](
-      decisionStumpAlgo,
-      numClasses,
-      numFeatureDimensions,
-      numIters)
-
-    adaboostMHAlgo.run(dataSet)
-  }
 }
