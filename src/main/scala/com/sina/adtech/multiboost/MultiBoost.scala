@@ -158,13 +158,9 @@ object MultiBoost extends Logging {
         strongLearnerAlgo.run(trainingData)
     }
 
-    val predicts = testingData.map {
-      case s: MultiLabeledPoint => model predict s.features
+    val predictsAndLabels = testingData.map { mlp =>
+      ((model predict mlp.features).toArray, mlp.labels.toArray)
     }.cache()
-
-    val predictsAndLabels = (predicts zip testingData map {
-      case (p, d) => (p.toArray, d.labels.toArray)
-    }).cache()
 
     val hammingLoss = computeHammingLoss(predictsAndLabels)
     val accuracy = computeAccuracy(predictsAndLabels)
