@@ -142,6 +142,7 @@ class AdaBoostMHAlgorithm[BM <: BaseLearnerModel, BA <: BaseLearnerAlgorithm[BM]
           p * l < 0.0
       }.count.toDouble / (predictsAndPoints.count * numClasses).toDouble
 
+      logInfo(s"Iter $iter. Hamming loss: $hammingLoss")
       updatedStrongLearner.debugString = iterData.model.debugString + s"\nIter $iter. Hamming loss: $hammingLoss"
 
       // 4. re-weight the data set
