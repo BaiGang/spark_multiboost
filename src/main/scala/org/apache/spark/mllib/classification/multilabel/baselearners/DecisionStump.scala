@@ -111,7 +111,7 @@ object DecisionStumpAlgorithm {
    * @param featureCut the feature and the split value of the stump
    * @param edges the vector of class-wise edges of the stump
    */
-  case class SplitMetric(featureCut: Option[FeatureCut], edges: Vector)
+  case class SplitMetric(featureCut: Option[FeatureCut], edges: Vector) extends Serializable
 
   def getLocalSplitMetrics(featureSet: Iterator[Int])(
     dataSet: Array[WeightedMultiLabeledPoint]): Iterator[SplitMetric] = {
