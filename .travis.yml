@@ -1,0 +1,12 @@
+language: scala
+scala:
+  - "2.10.4"
+jdk:
+  - oraclejdk7
+  - openjdk6
+script: sbt ++$TRAVIS_SCALA_VERSION assembly test
+notifications:
+  email:
+    recipients:
+      - me@baigang.net
+
